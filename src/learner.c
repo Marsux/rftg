@@ -160,6 +160,7 @@ int main(int argc, char *argv[])
 	/* Assume no options disabled */
 	my_game.goal_disabled = 0;
 	my_game.takeover_disabled = 0;
+	my_game.invasion_disabled = 0;
 
 	/* No campaign selected */
 	my_game.camp = NULL;

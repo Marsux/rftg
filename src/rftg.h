@@ -634,6 +634,7 @@ extern int exp_max_player[MAX_EXPANSION];
 #define FORMAT_DRAW "draw"
 #define FORMAT_DISCARD "discard"
 #define FORMAT_DEBUG "debug"
+#define FORMAT_INVASION "invasion"
 
 /*
  * Forward declaration.
@@ -990,6 +991,9 @@ typedef struct game
 	/* Disable takeovers in second (or later) expansion */
 	int8_t takeover_disabled;
 
+	/* Disable invasion in XI games */
+	int8_t invasion_disabled;
+
 	/* Include promo start worlds in deck */
 	int8_t promo;
 
@@ -1067,6 +1071,7 @@ typedef struct campaign
 	int advanced;
 	int goal_disabled;
 	int takeover_disabled;
+	int invasion_disabled;
 
 	/* Campaign name */
 	char *name;
@@ -1140,6 +1145,7 @@ extern void message_add(game *g, char *msg);
 extern void message_add_formatted(game *g, char *msg, char *tag);
 extern int goals_enabled(game *g);
 extern int takeovers_enabled(game *g);
+extern int invasion_enabled(game *g);
 extern void auto_export(void);
 extern int game_rand(game *g);
 extern int read_cards(char *suggestion);
@@ -1230,6 +1236,7 @@ extern int expansion_has_goals(int exp);
 extern int expansion_has_takeovers(int exp);
 extern int expansion_has_prestige(int exp);
 extern int expansion_has_start_world_choice(int exp);
+extern int expansion_has_invasion(int exp);
 extern int goal_minimum(int goal);
 extern void check_goal_loss(game *g, int who, int goal);
 extern void check_goals(game *g);

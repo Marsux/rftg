@@ -791,6 +791,10 @@ void read_campaign(void)
 				a_ptr->takeover_disabled = strtol(ptr, NULL, 0);
 				break;
 
+				// TODO Adapt existing campains to add invasion option?
+				// for the time being set a default value
+				a_ptr->invasion_disabled = -1;
+
 			/* Campaign description */
 			case 'D':
 
@@ -1062,6 +1066,7 @@ void apply_campaign(game *g)
 		if (g->camp->advanced >= 0) g->advanced = g->camp->advanced;
 		if (g->camp->goal_disabled >= 0) g->goal_disabled = g->camp->goal_disabled;
 		if (g->camp->takeover_disabled >= 0) g->takeover_disabled = g->camp->takeover_disabled;
+		if (g->camp->invasion_disabled >= 0) g->invasion_disabled = g->camp->invasion_disabled;
 	}
 }
 

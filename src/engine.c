@@ -70,6 +70,14 @@ inline int expansion_has_prestige(int exp)
 }
 
 /*
+ * Check whether the expansion has invasion.
+ */
+inline int expansion_has_invasion(int exp)
+{
+	return exp == EXP_XI;
+}
+
+/*
  * Check whether the expansion has initial choice between blue or red world.
  */
 inline int expansion_has_start_world_choice(int exp)
@@ -200,6 +208,14 @@ int goals_enabled(game *g)
 int takeovers_enabled(game *g)
 {
 	return expansion_has_takeovers(g->expanded) && !g->takeover_disabled;
+}
+
+/*
+ * Return whether invasion is enabled in this game.
+ */
+int invasion_enabled(game *g)
+{
+	return expansion_has_invasion(g->expanded) && !g->invasion_disabled;
 }
 
 /*
@@ -13029,6 +13045,23 @@ static void game_information(game *g)
 		{
 			/* Send message */
 			message_add_formatted(g, "Takeovers enabled.\n", FORMAT_TAKEOVER);
+		}
+	}
+
+	/* Check for expansion with invasion */
+	if (expansion_has_invasion(g->expanded))
+	{
+		/* Check for disabled takeovers */
+		if (g->invasion_disabled)
+		{
+			/* Send message */
+			message_add(g, "Xeno invasion disabled.\n");
+		}
+		else
+		{
+			/* Send message */
+			message_add_formatted(g, "Xeno invasion enabled.\n",
+			                      FORMAT_INVASION);
 		}
 	}
 }

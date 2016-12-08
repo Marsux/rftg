@@ -10029,6 +10029,9 @@ static void apply_options(void)
 	/* Set takeover disabled */
 	real_game.takeover_disabled = opt.disable_takeover;
 
+	/* Set invasion disabled */
+	real_game.invasion_disabled = opt.disable_invasion;
+
 	/* Check for custom seed value */
 	if (opt.customize_seed)
 	{
@@ -10676,6 +10679,8 @@ static void read_prefs(void)
 	                                          "no_goals", NULL);
 	opt.disable_takeover = g_key_file_get_boolean(pref_file, "game",
 	                                              "no_takeover", NULL);
+	opt.disable_invasion = g_key_file_get_boolean(pref_file, "game",
+	                                              "no_invasion", NULL);
 	/* Read campaign options */
 	opt.campaign_name = g_key_file_get_string(pref_file, "game", "campaign",
 	                                          NULL);
@@ -10900,6 +10905,8 @@ void save_prefs(void)
 	g_key_file_set_boolean(pref_file, "game", "no_goals", opt.disable_goal);
 	g_key_file_set_boolean(pref_file, "game", "no_takeover",
 	                       opt.disable_takeover);
+	g_key_file_set_boolean(pref_file, "game", "no_invasion",
+	                       opt.disable_invasion);
 
 	/* Set campaign (if any) */
 	g_key_file_set_string(pref_file, "game", "campaign", opt.campaign_name);
@@ -11577,6 +11584,7 @@ static GtkWidget *expansion_radio[MAX_EXPANSION];
 static GtkWidget *advanced_check;
 static GtkWidget *disable_goal_check;
 static GtkWidget *disable_takeover_check;
+static GtkWidget *disable_invasion_check;
 static GtkWidget *campaign_label, *seed_entry;
 
 /*
@@ -11709,6 +11717,23 @@ static void update_sensitivity()
 		/* Set takeover disabled checkbox sensitivity */
 		gtk_widget_set_sensitive(disable_takeover_check,
 		        expansion_has_takeovers(next_exp));
+	}
+
+	/* Check if campaign specifies invasion */
+	if (camp && camp->invasion_disabled >= 0)
+	{
+		/* Set takeover disabled checkbox value */
+		gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_invasion_check),
+		                             camp->invasion_disabled);
+
+		/* Clear takeover disabled checkbox sensitivity */
+		gtk_widget_set_sensitive(disable_invasion_check, FALSE);
+	}
+	else
+	{
+		/* Set takeover disabled checkbox sensitivity */
+		gtk_widget_set_sensitive(disable_invasion_check,
+		        expansion_has_invasion(next_exp));
 	}
 }
 
@@ -12233,6 +12258,17 @@ static void gui_new_parameters(GtkMenuItem *menu_item, gpointer data)
 	/* Add checkbox to options box */
 	gtk_container_add(GTK_CONTAINER(options_box), disable_takeover_check);
 
+	/* Create check box for disabled invasion */
+	disable_invasion_check =
+	                   gtk_check_button_new_with_label("Disable invasion");
+
+	/* Set checkbox status */
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_invasion_check),
+	                             opt.disable_invasion);
+
+	/* Add checkbox to options box */
+	gtk_container_add(GTK_CONTAINER(options_box), disable_invasion_check);
+
 	/* Create frame around buttons */
 	options_frame = gtk_frame_new("Game options");
 
@@ -12370,6 +12406,11 @@ static void gui_new_parameters(GtkMenuItem *menu_item, gpointer data)
 		opt.disable_takeover = expansion_has_takeovers(opt.expanded) &&
 		                gtk_toggle_button_get_active(
 		                     GTK_TOGGLE_BUTTON(disable_takeover_check));
+
+		/* Set invasion disabled flag */
+		opt.disable_invasion = expansion_has_invasion(opt.expanded) &&
+		                gtk_toggle_button_get_active(
+		                     GTK_TOGGLE_BUTTON(disable_invasion_check));
 
 		/* Set custom seed flag */
 		opt.customize_seed = gtk_toggle_button_get_active(
@@ -14582,6 +14623,10 @@ int main(int argc, char *argv[])
 	/* Create "debug" tag for message buffer */
 	gtk_text_buffer_create_tag(message_buffer, FORMAT_DEBUG,
 	                           "background", "#ff5555", NULL);
+
+	/* Create "invasion" tag for message buffer */
+	gtk_text_buffer_create_tag(message_buffer, FORMAT_INVASION,
+	                           "foreground", "#ff0000", NULL);
 
 	/* Get iterator for end of buffer */
 	gtk_text_buffer_get_end_iter(message_buffer, &end_iter);
