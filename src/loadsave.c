@@ -54,10 +54,16 @@ static int read_game(game *g, FILE* fff)
 	g->expanded = j;
 
 	/* Read game parameters */
-	fscanf(fff, "%d %d %d\n", &i, &j, &k);
+	fscanf(fff, "%d %d %d", &i, &j, &k);
 	g->advanced = i;
 	g->goal_disabled = j;
 	g->takeover_disabled = k;
+	if (strcmp(version, "0.9.6") >= 0)
+	{
+		fscanf(fff, "%d", &i);
+		g->invasion_disabled = i;
+	}
+	fscanf(fff, "\n");
 
 	/* Read campaign name */
 	fgets(buf, 1024, fff);
@@ -208,8 +214,8 @@ void write_game(game *g, FILE *fff, int player_us)
 
 	/* Write game setup information */
 	fprintf(fff, "%d %d\n", g->num_players, g->expanded);
-	fprintf(fff, "%d %d %d\n", g->advanced, g->goal_disabled,
-	                           g->takeover_disabled);
+	fprintf(fff, "%d %d %d %d\n", g->advanced, g->goal_disabled,
+	                           g->takeover_disabled, g->invasion_disabled);
 
 	/* Write campaign information (if any) */
 	fprintf(fff, "%s\n", g->camp ? g->camp->name : "none");
@@ -571,6 +577,11 @@ int export_game(game *g, char *filename, char *style_sheet,
 	if (expansion_has_takeovers(g->expanded))
 		fprintf(fff, "    <Takeovers>%s</Takeovers>\n",
 		        g->takeover_disabled ? "off" : "on");
+
+	/* Check for expansion with invasion */
+	if (expansion_has_invasion(g->expanded))
+		fprintf(fff, "    <Invasion>%s</Invasion>\n",
+		        g->invasion_disabled ? "off" : "on");
 
 	/* Write end tag */
 	fputs("  </Setup>\n", fff);
