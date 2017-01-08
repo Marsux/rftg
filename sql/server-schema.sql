@@ -1,5 +1,5 @@
-# Keldon's RFTG MySQL tables (extracted from server.c)
-CREATE DATABASE rftg;
+-- Keldon's RFTG MySQL tables (extracted from server.c)
+CREATE DATABASE rftg_dev;
 
 USE rftg;
 
@@ -7,7 +7,7 @@ CREATE USER 'rftg'@'localhost';
 
 GRANT SELECT,INSERT,UPDATE,DELETE ON rftg.* TO 'rftg'@'localhost';
 
-# All blob and text variables have max size 1024
+-- All blob and text variables have max size 1024
 CREATE TABLE users(
  uid INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
  user TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE attendance(
  seat INT NOT NULL,
  waiting ENUM('READY','BLOCKED','OPTION')); # From version 0.8.1m
 
-# Note: the column names are not present in the code
+-- Note: the column names are not present in the code
 CREATE TABLE results(
  gid INT NOT NULL,
  uid INT NOT NULL,
@@ -49,14 +49,14 @@ CREATE TABLE seed(
  gid INT NOT NULL,
  pool BLOB NOT NULL);
 
-# Exception: log is max length 20000
+-- Exception: log is max length 20000
 CREATE TABLE choices(
  gid INT NOT NULL,
  uid INT NOT NULL,
  log BLOB NOT NULL,
  PRIMARY KEY (gid, uid));
  
-# This table is only used from version 0.8.1k
+-- This table is only used from version 0.8.1k
 CREATE TABLE messages(
  mid INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
  gid INT NOT NULL,
