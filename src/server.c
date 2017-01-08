@@ -206,6 +206,7 @@ typedef struct session
 	int advanced;
 	int disable_goal;
 	int disable_takeover;
+	int disable_invasion;
 
 	/* Game speed */
 	int speed;
@@ -321,6 +322,31 @@ static void server_log(char *format, ...)
 	printf("\n");
 }
 
+/*
+ * Extract disabled option flags from session and pack them in a form
+ * appropriate for storage in the game database
+ */
+static int get_session_disabled_options(session *s_ptr)
+{
+	int res = 0;
+	if (s_ptr->disable_goal)
+		res ^= NO_GOALS;
+	if (s_ptr->disable_takeover)
+		res ^= NO_TAKEOVERS;
+	if (s_ptr->disable_invasion)
+		res ^= NO_INVASION;
+	return res;
+}
+
+/*
+ * Unpack disabled option flags into a struct session
+ */
+static void set_session_disabled_options(session *s_ptr, int dis_options)
+{
+	s_ptr->disable_goal = dis_options & NO_GOALS ? 1 : 0;
+	s_ptr->disable_takeover = dis_options & NO_TAKEOVERS ? 1 : 0;
+	s_ptr->disable_invasion = dis_options & NO_INVASION ? 1 : 0;
+}
 
 /*
  * Check for a user in the database with the given password.
@@ -468,14 +494,13 @@ static int db_new_game(int sid)
 	/* Create insertion query */
 	sprintf(query, "INSERT INTO games (description, pass, created, state, \
 	                                   minp, maxp, \
-	                                   exp, adv, dis_goal, dis_takeover, \
-	                                   speed, version) \
-	             VALUES ('%s', '%s', %d, 'WAITING', %d, %d, %d, %d, \
-	                     %d, %d, %d, '%s')",
-	        edesc, epass, s_ptr->created,
-	        s_ptr->min_player, s_ptr->max_player,
-	        s_ptr->expanded, s_ptr->advanced, s_ptr->disable_goal,
-	        s_ptr->disable_takeover, s_ptr->speed, VERSION);
+	                                   exp, adv, dis_options, speed, version) \
+	        VALUES ('%s', '%s', %d, 'WAITING', %d, %d, %d, %d, \
+	                %d, %d, '%s')",
+	                edesc, epass, s_ptr->created,
+	                s_ptr->min_player, s_ptr->max_player,
+	                s_ptr->expanded, s_ptr->advanced,
+	                get_session_disabled_options(s_ptr), s_ptr->speed, VERSION);
 
 	/* Send query */
 	mysql_query(mysql, query);
@@ -522,8 +547,7 @@ static void db_load_sessions(void)
 
 	/* Run query */
 	mysql_query(mysql, "SELECT gid, description, pass, created, state, \
-	                           minp, maxp, exp, adv, dis_goal, \
-	                           dis_takeover, speed \
+	                           minp, maxp, exp, adv, dis_options, speed \
 	                    FROM games \
 	                    WHERE state='WAITING' OR state='STARTED'");
 
@@ -565,9 +589,8 @@ static void db_load_sessions(void)
 		s_ptr->max_player = strtol(row[6], NULL, 0);
 		s_ptr->expanded = strtol(row[7], NULL, 0);
 		s_ptr->advanced = strtol(row[8], NULL, 0);
-		s_ptr->disable_goal = strtol(row[9], NULL, 0);
-		s_ptr->disable_takeover = strtol(row[10], NULL, 0);
-		s_ptr->speed = strtol(row[11], NULL, 0);
+		set_session_disabled_options(s_ptr, strtol(row[9], NULL, 0));
+		s_ptr->speed = strtol(row[10], NULL, 0);
 
 		/* Set last join time */
 		s_ptr->last_join = time(NULL);

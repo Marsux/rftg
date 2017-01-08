@@ -86,6 +86,36 @@ inline int expansion_has_start_world_choice(int exp)
 }
 
 /*
+ * Extract disabled option flags from game and pack them in a form appropriate
+ * for storage in the game database
+ */
+int get_game_disabled_options(game *g)
+{
+	int res = 0;
+	if (g->goal_disabled)
+		res ^= NO_GOALS;
+	if (g->takeover_disabled)
+		res ^= NO_TAKEOVERS;
+	if (g->invasion_disabled)
+		res ^= NO_INVASION;
+	return res;
+}
+
+/*
+ * Unpack disabled options from argument into a game structure. Assumes that
+ * the expansion of the game has already been set
+ */
+void set_game_disabled_options(game *g, int dis_options)
+{
+	g->goal_disabled = expansion_has_goals(g->expanded) &&
+	                       (dis_options & NO_GOALS) ? 1 : 0;
+	g->takeover_disabled = expansion_has_takeovers(g->expanded) &&
+	                       (dis_options & NO_TAKEOVERS) ? 1 : 0;
+	g->invasion_disabled = expansion_has_invasion(g->expanded) &&
+	                       (dis_options & NO_INVASION) ? 1 : 0;
+}
+
+/*
  * Textual representation for number of players.
  */
 char *player_labels[MAX_PLAYER] =

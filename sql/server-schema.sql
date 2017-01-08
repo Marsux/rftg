@@ -23,8 +23,9 @@ CREATE TABLE games(
  maxp INT NOT NULL,
  exp INT NOT NULL,
  adv INT NOT NULL,
- dis_goal INT NOT NULL,
- dis_takeover INT NOT NULL,
+ dis_options INT NOT NULL, # Replaces individual disabling flags
+ #dis_goal INT NOT NULL,
+ #dis_takeover INT NOT NULL,
  # variant INT NOT NULL, # Only used in version 0.8.1n
  speed INT NOT NULL,
  version TEXT NOT NULL);

@@ -144,6 +144,13 @@
 #define EXP_RVIO    6
 
 /*
+ * Option flags
+ */
+#define NO_GOALS        (1ULL << 0)
+#define NO_TAKEOVERS    (1ULL << 1)
+#define NO_INVASION     (1ULL << 2)
+
+/*
  * Maximum number of players per expansion
  */
 extern int exp_max_player[MAX_EXPANSION];
@@ -1237,6 +1244,8 @@ extern int expansion_has_takeovers(int exp);
 extern int expansion_has_prestige(int exp);
 extern int expansion_has_start_world_choice(int exp);
 extern int expansion_has_invasion(int exp);
+extern int get_game_disabled_options(game *g);
+extern void set_game_disabled_options(game *g, int dis_options);
 extern int goal_minimum(int goal);
 extern void check_goal_loss(game *g, int who, int goal);
 extern void check_goals(game *g);

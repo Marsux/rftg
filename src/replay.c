@@ -926,13 +926,14 @@ static int db_load_game(int gid)
 {
 	MYSQL_RES *res;
 	MYSQL_ROW row;
-	int i, players = 0, uids[MAX_PLAYER];
+	int i, players = 0, uids[MAX_PLAYER], dis_options;
 	unsigned long *field_len;
 	char query[1024];
 	char name[80];
 
 	/* Format query */
-	sprintf(query, "SELECT exp, adv, dis_goal, dis_takeover \
+	//TODO add a dis_invasion row
+	sprintf(query, "SELECT exp, adv, dis_options \
 	                FROM games WHERE gid = %d AND state = 'DONE'", gid);
 
 	/* Run query */
@@ -959,8 +960,7 @@ static int db_load_game(int gid)
 	/* Read fields */
 	g.expanded = strtol(row[0], NULL, 0);
 	g.advanced = strtol(row[1], NULL, 0);
-	g.goal_disabled = strtol(row[2], NULL, 0);
-	g.takeover_disabled = strtol(row[3], NULL, 0);
+	set_game_disabled_options(&g, strtol(row[2], NULL, 0));
 	g.promo = 0;
 	g.camp = NULL;
 
