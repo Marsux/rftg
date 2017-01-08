@@ -1454,12 +1454,24 @@ static void send_session_one(int sid, int cid)
 	db_user_name(s_ptr->created, name);
 
 	/* Send message to client */
-	send_msgf(cid, MSG_OPENGAME, "dssddddddddd",
-	          sid, s_ptr->desc, name, strlen(s_ptr->pass) > 0,
-	          s_ptr->min_player, s_ptr->max_player,
-	          s_ptr->expanded, s_ptr->advanced, s_ptr->disable_goal,
-	          s_ptr->disable_takeover, s_ptr->speed,
-	          c_list[cid].uid == s_ptr->created);
+	if (strcmp(c_list[cid].version, "0.9.6") < 0)
+	{
+		send_msgf(cid, MSG_OPENGAME, "dssddddddddd",
+		          sid, s_ptr->desc, name, strlen(s_ptr->pass) > 0,
+		          s_ptr->min_player, s_ptr->max_player,
+		          s_ptr->expanded, s_ptr->advanced, s_ptr->disable_goal,
+		          s_ptr->disable_takeover, s_ptr->speed,
+		          c_list[cid].uid == s_ptr->created);
+	}
+	else
+	{
+		send_msgf(cid, MSG_OPENGAME, "dssdddddddd",
+		      sid, s_ptr->desc, name, strlen(s_ptr->pass) > 0,
+		      s_ptr->min_player, s_ptr->max_player,
+		      s_ptr->expanded, s_ptr->advanced,
+		      get_session_disabled_options(s_ptr),
+		      s_ptr->speed, c_list[cid].uid == s_ptr->created);
+	}
 
 	/* Loop over player spots */
 	for (i = 0; i < MAX_PLAYER; i++)
@@ -1546,6 +1558,33 @@ static void send_to_session(int sid, char *msg)
 
 		/* Send to client */
 		send_msg(cid, msg);
+	}
+}
+
+/*
+ * Send a message variant to all connected clients of a session, according
+ * to the client version.
+ *
+ * If client version is older that new_version, send msg_old, else send msg_new.
+ */
+static void send_to_session_with_version(int sid, char *msg_old, char *msg_new,
+                                         char *new_version)
+{
+	session *s_ptr = &s_list[sid];
+	int i, cid;
+
+	/* Loop over users in a session */
+	for (i = 0; i < s_ptr->num_users; i++)
+	{
+		/* Get connection ID of this user */
+		cid = s_ptr->cids[i];
+
+		/* Check for no connection */
+		if (cid < 0) continue;
+
+		/* Send to client */
+		send_msg(cid, strcmp(c_list[cid].version, new_version) >= 0 ?
+		              msg_new : msg_old);
 	}
 }
 
@@ -1757,45 +1796,59 @@ int game_rand(game *g)
 static void update_meta(int sid)
 {
 	session *s_ptr = &s_list[sid];
-	char msg[1024], *ptr = msg;
-	int i;
+	char msg[2][1024], *ptr[2];
+	int i, j;
 
-	/* Start message */
-	start_msg(&ptr, MSG_STATUS_META);
-
-	/* Add game parameters to message */
-	put_integer(s_ptr->num_users, &ptr);
-	put_integer(s_ptr->expanded, &ptr);
-	put_integer(s_ptr->advanced, &ptr);
-	put_integer(s_ptr->disable_goal, &ptr);
-	put_integer(s_ptr->disable_takeover, &ptr);
-
-	/* Loop over goals */
-	for (i = 0; i < MAX_GOAL; i++)
+	/* Prepare common message prefix */
+	for (j = 0; j < 2; j++)
 	{
-		/* Add goal presence to message */
-		put_integer(s_ptr->g.goal_active[i], &ptr);
+		/* Start message */
+		ptr[j] = msg[j];
+		start_msg(ptr + j, MSG_STATUS_META);
+
+		/* Add game parameters to message */
+		put_integer(s_ptr->num_users, ptr + j);
+		put_integer(s_ptr->expanded, ptr + j);
+		put_integer(s_ptr->advanced, ptr + j);
 	}
 
-	/* Loop over players */
-	for (i = 0; i < s_ptr->num_users; i++)
-	{
-		/* Add player's name to message */
-		put_string(s_ptr->g.p[i].name, &ptr);
-	}
+	/* disabled option flags, old format */
+	put_integer(s_ptr->disable_goal, ptr);
+	put_integer(s_ptr->disable_takeover, ptr);
 
-	/* Loop over players again */
-	for (i = 0; i < s_ptr->num_users; i++)
-	{
-		/* Add ai flag to message */
-		put_integer(s_ptr->g.p[i].ai, &ptr);
-	}
+	/* disabled option flags, new format */
+	put_integer(get_session_disabled_options(s_ptr), ptr + 1);
 
-	/* Finish message */
-	finish_msg(msg, ptr);
+	/* Prepare common message suffix */
+	for (j = 0; j < 2; j++)
+	{
+		/* Loop over goals */
+		for (i = 0; i < MAX_GOAL; i++)
+		{
+			/* Add goal presence to message */
+			put_integer(s_ptr->g.goal_active[i], ptr + j);
+		}
+
+		/* Loop over players */
+		for (i = 0; i < s_ptr->num_users; i++)
+		{
+			/* Add player's name to message */
+			put_string(s_ptr->g.p[i].name, ptr + j);
+		}
+
+		/* Loop over players again */
+		for (i = 0; i < s_ptr->num_users; i++)
+		{
+			/* Add ai flag to message */
+			put_integer(s_ptr->g.p[i].ai, ptr + j);
+		}
+
+		/* Finish message */
+		finish_msg(msg[j], ptr[j]);
+	}
 
 	/* Send to everyone */
-	send_to_session(sid, msg);
+	send_to_session_with_version(sid, msg[0], msg[1], "0.9.6");
 
 	/* Loop over players */
 	for (i = 0; i < s_ptr->num_users; i++)

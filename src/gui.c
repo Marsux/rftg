@@ -14880,12 +14880,13 @@ int main(int argc, char *argv[])
 	    G_TYPE_INT,    //  9: Expansion id
 	    G_TYPE_STRING, // 10: Expansion name
 	    G_TYPE_INT,    // 11: Advanced game?
-	    G_TYPE_INT,    // 12: Disable goals?
-	    G_TYPE_INT,    // 13: Disable takeovers?
-	    G_TYPE_INT,    // 14: Game speed
-	    G_TYPE_INT,    // 15: My game/player id?
-	    G_TYPE_INT,    // 16: Checkboxes visible?
-	    G_TYPE_INT);   // 17: Weight of text
+//	    G_TYPE_INT,    // 12: Disable goals?
+//	    G_TYPE_INT,    // 13: Disable takeovers?
+	    G_TYPE_STRING, // 12: Disabled options?
+	    G_TYPE_INT,    // 13: Game speed
+	    G_TYPE_INT,    // 14: My game/player id?
+	    G_TYPE_INT,    // 15: Checkboxes visible?
+	    G_TYPE_INT);   // 16: Weight of text
 
 	/* Create view for chat users */
 	games_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(game_list));
@@ -14954,23 +14955,14 @@ int main(int argc, char *argv[])
 	gtk_tree_view_column_set_sort_column_id(
 	    tree_view_column, GAME_COL_ADVANCED);
 
-	/*** Seventh column (goal disabled checkbox) ***/
+	/*** Seventh column (disabled options) ***/
+	//TODO fill the value of this column
 	gtk_tree_view_insert_column_with_attributes(
-	    GTK_TREE_VIEW(games_view), -1, "Disable Goals", toggle_render,
-	    "active", GAME_COL_DISABLE_GOAL,
-	    "visible", GAME_COL_CHECK_VISIBLE, NULL);
+	    GTK_TREE_VIEW(games_view), -1, "Disabled Options", render,
+	    "text", GAME_COL_DISABLED_OPTIONS, NULL);
 	tree_view_column = gtk_tree_view_get_column(GTK_TREE_VIEW(games_view), 6);
 	gtk_tree_view_column_set_sort_column_id(
-	    tree_view_column, GAME_COL_DISABLE_GOAL);
-
-	/*** Eight column (takeovers disabled checkbox) ***/
-	gtk_tree_view_insert_column_with_attributes(
-	    GTK_TREE_VIEW(games_view), -1, "Disable Takeovers", toggle_render,
-	    "active", GAME_COL_DISABLE_TO,
-	    "visible", GAME_COL_CHECK_VISIBLE, NULL);
-	tree_view_column = gtk_tree_view_get_column(GTK_TREE_VIEW(games_view), 7);
-	gtk_tree_view_column_set_sort_column_id(
-	    tree_view_column, GAME_COL_DISABLE_TO);
+	    tree_view_column, GAME_COL_DISABLED_OPTIONS);
 
 	/* Connect "cursor-changed" property of game view */
 	g_signal_connect(G_OBJECT(games_view), "cursor-changed",

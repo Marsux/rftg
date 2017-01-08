@@ -51,13 +51,12 @@
 #define GAME_COL_EXPANSION         9
 #define GAME_COL_EXPANSION_STR    10
 #define GAME_COL_ADVANCED         11
-#define GAME_COL_DISABLE_GOAL     12
-#define GAME_COL_DISABLE_TO       13
-#define GAME_COL_NO_TIMEOUT       14
-#define GAME_COL_SELF             15
-#define GAME_COL_CHECK_VISIBLE    16
-#define GAME_COL_WEIGHT           17
-#define GAME_MAX_COLUMN           18
+#define GAME_COL_DISABLED_OPTIONS 12
+#define GAME_COL_NO_TIMEOUT       13
+#define GAME_COL_SELF             14
+#define GAME_COL_CHECK_VISIBLE    15
+#define GAME_COL_WEIGHT           16
+#define GAME_MAX_COLUMN           17
 
 /*
  * Column ids of lobby player list.

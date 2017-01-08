@@ -426,7 +426,7 @@ void game_view_changed(GtkTreeView *view, gpointer data)
  */
 static void handle_open_game(char *ptr, int size)
 {
-	int x, y, new_game = FALSE;
+	int x, y, new_game = FALSE, offset;
 	char buf[1024];
 	char *msg_buf = ptr;
 	char *cmp_key;
@@ -536,12 +536,21 @@ static void handle_open_game(char *ptr, int size)
 
 	/* Read disable options */
 	if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
-	if (!get_integer(&y, msg_buf, size, &ptr)) goto format_error;
+
+	/* Create option string */
+	//TODO only display option if it is relevant to the expansion
+	offset = 0;
+	if (x & NO_GOALS) offset = sprintf(buf, "No goals");
+	if (x & NO_TAKEOVERS)
+	{
+		if (offset) offset += sprintf(buf + offset, ", ");
+		sprintf(buf + offset, "No takeovers");
+	}
+	if (x & NO_INVASION) sprintf(buf, "No invasion");
 
 	/* Set disable options */
 	gtk_tree_store_set(game_list, &list_iter,
-	                   GAME_COL_DISABLE_GOAL, x,
-	                   GAME_COL_DISABLE_TO, y,
+	                   GAME_COL_DISABLED_OPTIONS, buf,
 	                   -1);
 
 	/* Read game speed option */
@@ -738,10 +747,7 @@ static void handle_status_meta(char *ptr, int size)
 	if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
 	real_game.advanced = x;
 	if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
-	real_game.goal_disabled = x;
-	if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
-	real_game.takeover_disabled = x;
-
+	set_game_disabled_options(&real_game, x);
 	/* Clear local only flags */
 	real_game.camp = NULL;
 	real_game.promo = 0;
