@@ -3265,6 +3265,7 @@ static void start_session(int sid)
 	s_ptr->g.advanced = s_ptr->advanced;
 	s_ptr->g.goal_disabled = s_ptr->disable_goal;
 	s_ptr->g.takeover_disabled = s_ptr->disable_takeover;
+	s_ptr->g.invasion_disabled = s_ptr->disable_invasion;
 	s_ptr->g.camp = NULL;
 
 	/* Save session ID in game structure */
@@ -3740,10 +3741,23 @@ static void handle_create(int cid, int size)
 	s_ptr->expanded = x;
 	if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
 	s_ptr->advanced = x;
-	if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
-	s_ptr->disable_goal = x;
-	if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
-	s_ptr->disable_takeover = x;
+	/* Read disabled option flags */
+	/* Old format */
+	if (strcmp(c_list[cid].version, "0.9.6") < 0)
+	{
+		if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
+		s_ptr->disable_goal = x;
+		if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
+		s_ptr->disable_takeover = x;
+		/* Consider that invasion mode is disabled */
+		s_ptr->disable_invasion = 1;
+	}
+	/* New format */
+	else
+	{
+		if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
+		set_session_disabled_options(s_ptr, x);
+	}
 
 	/* Read preferred game speed */
 	if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
@@ -3776,6 +3790,8 @@ static void handle_create(int cid, int size)
 		s_ptr->disable_goal = 0;
 	if (!expansion_has_takeovers(s_ptr->expanded))
 		s_ptr->disable_takeover = 0;
+	if (!expansion_has_invasion(s_ptr->expanded))
+		s_ptr->disable_invasion = 0;
 
 	/* Insert game into database */
 	s_ptr->gid = db_new_game(sid);

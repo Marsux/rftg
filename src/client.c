@@ -2782,6 +2782,7 @@ static GtkWidget *min_player, *max_player;
 static GtkWidget *advanced_check;
 static GtkWidget *disable_goal_check;
 static GtkWidget *disable_takeover_check;
+static GtkWidget *disable_invasion_check;
 
 /*
  * Current selection for create game options
@@ -2801,6 +2802,10 @@ static void update_sensitivity()
 	/* Set takeover disabled checkbox sensitivity */
 	gtk_widget_set_sensitive(disable_takeover_check,
 	                         expansion_has_takeovers(next_exp));
+
+	/* Set invasion disabled checkbox sensitivity */
+	gtk_widget_set_sensitive(disable_invasion_check,
+	                         expansion_has_invasion(next_exp));
 
 	/* Find maximum number of players */
 	max_p = exp_max_player[next_exp];
@@ -2884,7 +2889,7 @@ void create_dialog(GtkButton *button, gpointer data)
 	GtkWidget *exp_box, *exp_frame;
 	GtkWidget *player_box, *player_frame;
 	GtkWidget *options_box, *options_frame;
-	int i, exp;
+	int i, exp, disable_options;
 
 	/* Create dialog box */
 	dialog = gtk_dialog_new_with_buttons("Create Game", NULL,
@@ -3086,6 +3091,17 @@ void create_dialog(GtkButton *button, gpointer data)
 	/* Add checkbox to options box */
 	gtk_container_add(GTK_CONTAINER(options_box), disable_takeover_check);
 
+	/* Create check box for disabled invasion */
+	disable_invasion_check =
+	                   gtk_check_button_new_with_label("Disable invasion");
+
+	/* Set default */
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(disable_invasion_check),
+	                             opt.disable_invasion);
+
+	/* Add checkbox to options box */
+	gtk_container_add(GTK_CONTAINER(options_box), disable_invasion_check);
+
 	/* Create frame around buttons */
 	options_frame = gtk_frame_new("Game options");
 
@@ -3123,20 +3139,33 @@ void create_dialog(GtkButton *button, gpointer data)
 	                             GTK_TOGGLE_BUTTON(disable_goal_check));
 	opt.disable_takeover = gtk_toggle_button_get_active(
 	                             GTK_TOGGLE_BUTTON(disable_takeover_check));
+	opt.disable_invasion = gtk_toggle_button_get_active(
+	                             GTK_TOGGLE_BUTTON(disable_invasion_check));
 
 	/* Save change to file */
 	save_prefs();
 
+	/* Pack disabled option flags */
+	disable_options = 0;
+	if (expansion_has_goals(next_exp) &&
+	    gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(disable_goal_check)))
+		disable_options ^= NO_GOALS;
+	if (expansion_has_takeovers(next_exp) &&
+	    gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(disable_takeover_check)))
+		disable_options ^= NO_TAKEOVERS;
+	if (expansion_has_invasion(next_exp) &&
+	    gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(disable_invasion_check)))
+		disable_options ^= NO_INVASION;
+
 	/* Send create message to server */
-	send_msgf(server_fd, MSG_CREATE, "ssddddddd",
+	send_msgf(server_fd, MSG_CREATE, "ssdddddd",
 	    gtk_entry_get_text(GTK_ENTRY(pass)),
 	    gtk_entry_get_text(GTK_ENTRY(desc)),
 	    (int)gtk_range_get_value(GTK_RANGE(min_player)),
 	    (int)gtk_range_get_value(GTK_RANGE(max_player)),
 	    next_exp,
 	    gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(advanced_check)),
-	    gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(disable_goal_check)),
-	    gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(disable_takeover_check)),
+	    disable_options,
 	    0);
 
 	/* Destroy dialog */
