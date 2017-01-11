@@ -1047,6 +1047,9 @@ static void setup_nets(game *g)
 		/* Skip cards that have no copies in this game */
 		if (d_ptr->expand[g->expanded] == 0) continue;
 
+		/* Skip invasion cards, TODO add them back for training? */
+		if (d_ptr->type == TYPE_INVASION) continue;
+
 		/* Add mapping of this card design */
 		card_input[i] = num_c_input++;
 

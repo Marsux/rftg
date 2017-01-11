@@ -2357,3 +2357,123 @@ P:5:DRAW_TWO_MILITARY:1:0
 V:2:ANTI_XENO_WORLD:N/A
 V:1:WORLD:N/A
 V:1:ANTI_XENO_DEVEL:N/A
+
+N:Wave I Invasion Card of Strength -1
+T:3:0:0
+E@5:2
+P:3:EXTRA_MILITARY:-1:0
+
+N:Wave I Invasion Card of Strength 0
+T:3:0:0
+E@5:2
+P:3:EXTRA_MILITARY:0:0
+
+N:Wave I Invasion Card of Strength 1
+T:3:0:0
+E@5:3
+P:3:EXTRA_MILITARY:1:0
+
+N:Wave I Invasion Card of Strength 2
+T:3:0:0
+E@5:2
+P:3:EXTRA_MILITARY:2:0
+
+N:Wave I Invasion Card of Strength 3
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:3:0
+
+N:Wave I Invasion Card of Strength 4
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:4:0
+
+N:Wave II Invasion Card of Strength 0
+T:3:0:0
+E@5:2
+P:3:EXTRA_MILITARY:0:0
+
+N:Wave II Invasion Card of Strength 1
+T:3:0:0
+E@5:2
+P:3:EXTRA_MILITARY:1:0
+
+N:Wave II Invasion Card of Strength 2
+T:3:0:0
+E@5:2
+P:3:EXTRA_MILITARY:2:0
+
+N:Wave II Invasion Card of Strength 3
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:3:0
+
+N:Wave II Invasion Card of Strength 4
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:4:0
+
+N:Wave II Invasion Card of Strength 5
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:5:0
+
+N:Wave II Invasion Card of Strength 6
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:6:0
+
+N:Wave II Invasion Card of Strength 7
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:7:0
+
+N:Wave III Invasion Card of Strength 3
+T:3:0:0
+E@5:4
+P:3:EXTRA_MILITARY:3:0
+
+N:Wave III Invasion Card of Strength 4
+T:3:0:0
+E@5:3
+P:3:EXTRA_MILITARY:4:0
+
+N:Wave III Invasion Card of Strength 5
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:5:0
+
+N:Wave III Invasion Card of Strength 6
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:6:0
+
+N:Wave III Invasion Card of Strength 7
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY:7:0
+
+N:Wave III Invasion Card of Strength 8
+T:3:0:0
+E@5:2
+P:3:EXTRA_MILITARY:8:0
+
+N:Wave III Invasion Card of Strength 9
+T:3:0:0
+E@5:2
+P:3:EXTRA_MILITARY:9:0
+
+N:Wave III Invasion Card of Strength ?+3
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY | PLUS_M:3:0
+
+N:Wave III Invasion Card of Strength ?+4
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY | PLUS_M:4:0
+
+N:Wave III Invasion Card of Strength ?+5
+T:3:0:0
+E@5:1
+P:3:EXTRA_MILITARY | PLUS_M:5:0

@@ -29,7 +29,7 @@
 #endif
 
 #ifndef VERSION
-#define VERSION "0.9.5"
+#define VERSION "0.9.6"
 #endif
 
 #ifndef RELEASE
@@ -75,17 +75,28 @@
 /*
  * Number of available card designs slots.
  */
-#define AVAILABLE_DESIGN 300
+#define AVAILABLE_DESIGN 324
 
 /*
  * Number of original card designs.
  */
-#define MAX_DESIGN 280
+#define MAX_DESIGN 304
 
 /*
  * Number of cards in the deck.
  */
 #define MAX_DECK 328
+
+/*
+ * Number of cards in the invasion deck, and wave delimiters.
+ */
+#define MAX_XENO_DECK 39
+#define MIN_XENO_WAVE_1 0
+#define MAX_XENO_WAVE_1 11
+#define MIN_XENO_WAVE_2 11
+#define MAX_XENO_WAVE_2 22
+#define MIN_XENO_WAVE_3 22
+#define MAX_XENO_WAVE_3 39
 
 /*
  * Number of powers per card.
@@ -191,6 +202,7 @@ extern int exp_max_player[MAX_EXPANSION];
  */
 #define TYPE_WORLD        1
 #define TYPE_DEVELOPMENT  2
+#define TYPE_INVASION     3
 
 /*
  * Card flags.
@@ -248,7 +260,8 @@ extern int exp_max_player[MAX_EXPANSION];
 #define WHERE_SAVED    5
 #define WHERE_ASIDE    6
 #define WHERE_CAMPAIGN 7
-
+#define WHERE_XENO_DECK    8
+#define WHERE_XENO_DISCARD 9
 /*
  * Misc card flags.
  */
@@ -393,6 +406,7 @@ extern int exp_max_player[MAX_EXPANSION];
 #define P3_PER_PEACEFUL       (1ULL << 48)
 #define P3_CONSUME_NOVELTY    (1ULL << 49)
 #define P3_CONSUME_ANY        (1ULL << 50)
+#define P3_PLUS_M             (1ULL << 51)
 
 /* Mask of takeover powers */
 #define P3_TAKEOVER_MASK (P3_TAKEOVER_REBEL | P3_TAKEOVER_IMPERIUM | \
@@ -1009,6 +1023,12 @@ typedef struct game
 
 	/* Information about each card */
 	card deck[MAX_DECK];
+
+	/* Size of xeno deck in use */
+	int16_t xeno_deck_size;
+
+	/* Information about invasion cards */
+	card xeno_deck[MAX_XENO_DECK];
 
 	/* Victory points remaining in the pool */
 	int8_t vp_pool;

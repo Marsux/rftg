@@ -454,7 +454,12 @@ static int action_cidx, action_oidx;
 /*
  * Number of icon images.
  */
-#define MAX_ICON 25
+#define MAX_ICON 28
+
+/*
+ * Number of xeno images.
+ */
+#define MAX_XENO 19
 
 /*
  * Special icon numbers.
@@ -474,6 +479,7 @@ static int action_cidx, action_oidx;
 #define ICON_DRAW_EMPTY 22
 #define ICON_EXPLORE    23
 #define ICON_CONSUME    24
+#define ICON_INVASION   25
 
 /*
  * Icon states.
@@ -485,7 +491,7 @@ static int action_cidx, action_oidx;
 /*
  * Number of action card images.
  */
-#define MAX_ACT_CARD   11
+#define MAX_ACT_CARD   12
 
 
 /*
@@ -512,6 +518,11 @@ static GdkPixbuf *action_cache[MAX_ACT_CARD];
  * Card back image.
  */
 static GdkPixbuf *card_back;
+
+/*
+ * Xeno Invasion images.
+ */
+static GdkPixbuf *xeno_cache[MAX_XENO];
 
 /*
  * Widgets used in multiple functions.
@@ -1028,6 +1039,19 @@ static void load_image_bundle(void)
 
 			/* Get pointer to pixbuf holder */
 			pix_ptr = &action_cache[x];
+		}
+
+		/* Check for xeno invasion asset image */
+		else if (buf[0] == 6)
+		{
+			/* Read card number */
+			count = g_input_stream_read(fs, buf, 3, NULL, NULL);
+
+			/* Convert to integer */
+			x = strtol(buf, NULL, 10);
+
+			/* Get pointer to pixbuf holder */
+			pix_ptr = &xeno_cache[x];
 		}
 
 		/* Check for something else */

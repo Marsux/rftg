@@ -184,6 +184,7 @@ static char *power_name[6][64] =
 		"PER_PEACEFUL",
 		"CONSUME_NOVELTY",
 		"CONSUME_ANY",
+		"PLUS_M",
 		NULL,
 	},
 
@@ -1124,6 +1125,9 @@ void init_game(game *g)
 	/* No cards in deck yet */
 	g->deck_size = 0;
 
+	/* No cards in xeno deck yet */
+	g->xeno_deck_size = 0;
+
 	/* Clear goals */
 	for (i = 0; i < MAX_GOAL; i++)
 	{
@@ -1155,22 +1159,49 @@ void init_game(game *g)
 		/* Add cards */
 		for (j = 0; j < n; j++)
 		{
-			/* Check for too large deck */
-			if (g->deck_size >= MAX_DECK)
-			{
-				/* Error */
-				display_error("Deck is too large!");
-				exit(1);
-			}
 
 			/* Get card pointer */
-			c_ptr = &g->deck[g->deck_size++];
+			/* Case of invasion cards */
+			if (d_ptr->type == TYPE_INVASION)
+			{
+				/* Ignore design if the game is not an invasion game */
+				if (!expansion_has_invasion(g->expanded) ||
+				    g->invasion_disabled) break;
+
+				/* Check for too large deck */
+				if (g->xeno_deck_size >= MAX_XENO_DECK)
+				{
+					/* Error */
+					display_error("Deck is too large!");
+					exit(1);
+				}
+
+				/* Get card pointer */
+				c_ptr = &g->xeno_deck[g->xeno_deck_size++];
+
+				/* Put location in draw deck */
+				c_ptr->start_where = c_ptr->where = WHERE_XENO_DECK;
+			}
+			/* Case of worlds and developments */
+			else
+			{
+				/* Check for too large deck */
+				if (g->deck_size >= MAX_DECK)
+				{
+					/* Error */
+					display_error("Deck is too large!");
+					exit(1);
+				}
+
+				/* Get card pointer */
+				c_ptr = &g->deck[g->deck_size++];
+
+				/* Put location in draw deck */
+				c_ptr->start_where = c_ptr->where = WHERE_DECK;
+			}
 
 			/* No owner */
 			c_ptr->start_owner = c_ptr->owner = -1;
-
-			/* Put location in draw deck */
-			c_ptr->start_where = c_ptr->where = WHERE_DECK;
 
 			/* Clear card misc flags */
 			c_ptr->misc = 0;
