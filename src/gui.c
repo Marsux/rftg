@@ -13095,7 +13095,7 @@ static void render_where(GtkTreeViewColumn *col, GtkCellRenderer *cell,
 	                   -1);
 
 	/* Set name string */
-	name = (i < 0 || i > 8) ? "Unknown" : location_names[i];
+	name = (i < 0 || i >= MAX_WHERE) ? "Unknown" : location_names[i];
 
 	/* Set "text" property of renderer */
 	g_object_set(G_OBJECT(cell), "text", name, NULL);
@@ -13397,6 +13397,8 @@ static void debug_card_dialog(GtkMenuItem *menu_item, gpointer data)
 	gtk_list_store_append(where_list, &list_iter);
 	gtk_list_store_set(where_list, &list_iter,
 	                   0, WHERE_CAMPAIGN, 1, "Campaign", -1);
+
+	// TODO XI add XENO deck and discard?
 
 	/* Create view of card list */
 	list_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(card_list));

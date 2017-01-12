@@ -426,6 +426,7 @@ static void export_linked_cards(FILE *fff, char *header, game *g, int x,
 
 /*
  * Export all card's locations (as seen from a specific player).
+ * TODO XI also process invasion cards?
  */
 static void export_locations(FILE *fff, game *g, int who,
                              int num_special_cards, card **special_cards)

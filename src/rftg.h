@@ -141,7 +141,7 @@
 /*
  * Number of card locations.
  */
-#define MAX_WHERE 8
+#define MAX_WHERE 10
 
 /*
  * Expansions
@@ -1155,7 +1155,7 @@ extern char *search_name[MAX_SEARCH];
 extern char *exp_names[MAX_EXPANSION + 1];
 extern int exp_display_order[MAX_EXPANSION];
 extern char *player_labels[MAX_PLAYER];
-extern char *location_names[9];
+extern char *location_names[MAX_WHERE];
 extern decisions ai_func;
 extern decisions gui_func;
 

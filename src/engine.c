@@ -131,7 +131,7 @@ char *player_labels[MAX_PLAYER] =
 /*
  * Textual representation for card locations.
  */
-char *location_names[9] =
+char *location_names[MAX_WHERE] =
 {
 	"Deck",
 	"Discard",
@@ -141,7 +141,8 @@ char *location_names[9] =
 	"Saved",
 	"Aside",
 	"Campaign",
-	"Revealed",
+	"Invasion Deck",
+	"Invasion Discard"
 };
 
 void dump_hand(game *g, int who)
