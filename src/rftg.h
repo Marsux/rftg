@@ -603,6 +603,11 @@ extern int exp_max_player[MAX_EXPANSION];
 #define GOAL_MOST_CONSUME       19
 
 /*
+ * Xeno repulse value per number of players.
+ */
+extern int8_t xeno_repulse_value[6];
+
+/*
  * Choice types we can send to players.
  */
 #define CHOICE_ACTION           0
@@ -959,6 +964,15 @@ typedef struct player
 
 } player;
 
+struct repulse_info
+{
+	int8_t player;
+	int8_t strength;
+	int8_t done;
+	struct repulse_info *prev;
+	struct repulse_info *next;
+};
+
 /*
  * Information about a game.
  */
@@ -1062,6 +1076,22 @@ typedef struct game
 
 	/* Current kind of "any" good giving owner the best score */
 	int8_t best_oort_kind;
+
+	/* Number of empire defeats against Xeno */
+	int8_t xeno_n_defeat;
+
+	/* Index of the current Xeno Wave */
+	int8_t xeno_wave;
+
+	/* Number of invasion cards by wave */
+	int8_t xeno_n_invasion_card[4];
+
+	/* Xeno repulse value */
+	int8_t xeno_repulse;
+
+	/* Xeno repulse track, a doubly chained list. The stack provides storage. */
+	struct repulse_info *xeno_repulse_track;
+	struct repulse_info xeno_repulse_stack[5];
 
 	/* Actions selected this round */
 	int8_t action_selected[MAX_ACTION];

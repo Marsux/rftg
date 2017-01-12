@@ -1468,4 +1468,31 @@ void init_game(game *g)
 			goal[j] = goal[--n];
 		}
 	}
+
+	/* Init invasion related variables if invasion mode is selected */
+	if (expansion_has_invasion(g->expanded) && !g->invasion_disabled)
+	{
+		/* Empire has not yet been defeated */
+		g->xeno_n_defeat = 0;
+
+		/* First two rounds have no invasion wave */
+		g->xeno_wave = 0;
+
+		/*
+		 * Set the number of cards in the invasion deck by wave according to
+		 * the number of players and the advanced option
+		 */
+		g->xeno_n_invasion_card[0] = 2;
+		for (i = 1; i < 3; i++)
+		{
+			g->xeno_n_invasion_card[i] = (g->advanced ? 1 : 2)*g->num_players;
+		}
+		g->xeno_n_invasion_card[3] = MAX_XENO_WAVE_3 - MIN_XENO_WAVE_3;
+
+		/* Set the Xeno repulse value according to the number of players */
+		g->xeno_repulse = xeno_repulse_value[g->num_players];
+
+		/* Empty the repulsion track */
+		g->xeno_repulse_track = NULL;
+	}
 }

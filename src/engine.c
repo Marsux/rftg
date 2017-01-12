@@ -129,6 +129,11 @@ char *player_labels[MAX_PLAYER] =
 };
 
 /*
+ * Xeno repulse value per number of players.
+ */
+int8_t xeno_repulse_value[6] = {0, 0, 22, 28, 33, 39};
+
+/*
  * Textual representation for card locations.
  */
 char *location_names[MAX_WHERE] =
