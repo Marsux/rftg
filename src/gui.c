@@ -457,11 +457,6 @@ static int action_cidx, action_oidx;
 #define MAX_ICON 28
 
 /*
- * Number of xeno images.
- */
-#define MAX_XENO 19
-
-/*
  * Special icon numbers.
  */
 #define ICON_NO_ACT     10
@@ -487,6 +482,34 @@ static int action_cidx, action_oidx;
 #define ICON_STATE_NORMAL   0
 #define ICON_STATE_ACTIVE   1
 #define ICON_STATE_INACTIVE 2
+
+/*
+ * Number of xeno images.
+ */
+#define MAX_XENO 19
+
+/*
+ * Special xeno invasion numbers.
+ */
+#define XENO_RULES                0
+#define XENO_ROUND_1              1
+#define XENO_ROUND_2              2
+#define XENO_WAVE_1               3
+#define XENO_WAVE_2               4
+#define XENO_WAVE_3               5
+#define XENO_DEFEAT_0             6
+#define XENO_DEFEAT_1             7
+#define XENO_ADMIRAL              8
+#define XENO_CONTRIBUTOR          9
+#define XENO_BUNKER              10
+#define XENO_DAMAGED             11
+#define XENO_SLOT                12
+#define XENO_TILE_2              13
+#define XENO_TILE_3              14
+#define XENO_TILE_4              15
+#define XENO_TILE_5              16
+#define XENO_EMPIRE_MILITARY     17
+#define XENO_REPULSE             18
 
 /*
  * Number of action card images.
@@ -533,6 +556,7 @@ static GtkWidget *player_area[MAX_PLAYER], *orig_area[MAX_PLAYER];
 static GtkWidget *player_status[MAX_PLAYER], *orig_status[MAX_PLAYER];
 static GtkWidget *player_box[MAX_PLAYER], *player_sep[MAX_PLAYER];
 static GtkWidget *goal_area;
+static GtkWidget *invasion_area;
 static GtkWidget *game_status;
 static GtkWidget *main_hbox, *lobby_vbox;
 static GtkWidget *phase_box, *action_box;
@@ -2849,6 +2873,213 @@ void redraw_goal(void)
 	}
 }
 
+void redraw_invasion(void)
+{
+	GtkWidget *image, *info_box, *repulse_box, *h_box, *xeno_status_box;
+	GtkWidget *arrow;
+	GdkPixbuf *buf, *orig;
+	int i;
+	int width, image_h, image_w;
+	int width_repulse = 60, width_info = 80;
+
+	/* Do not do anything if invasion is not enabled */
+	if (!invasion_enabled(&real_game)) return;
+
+	/* First destroy all pre-existing goal widgets */
+	gtk_container_foreach(GTK_CONTAINER(invasion_area), destroy_widget, NULL);
+
+	/* Get invasion area width */
+	width = invasion_area->allocation.width;
+
+	/* Determine which invasion cardback to display */
+	if (real_game.xeno_wave == 0)
+	{
+		i = real_game.round <= 1 ? XENO_ROUND_1 : XENO_ROUND_2;
+	}
+	else
+	{
+		i = XENO_WAVE_1 + real_game.xeno_wave - 1;
+	}
+
+	/* Load invasion cardback to display */
+	orig = xeno_cache[i];
+	image_h = width * gdk_pixbuf_get_height(orig) / gdk_pixbuf_get_width(orig);
+	buf = gdk_pixbuf_scale_simple(orig, width,image_h, GDK_INTERP_BILINEAR);
+
+	/* Make image widget */
+	image = gtk_image_new_from_pixbuf(buf);
+
+	/* Destroy local copy of the pixbuf */
+	g_object_unref(G_OBJECT(buf));
+
+	/* Pack image into invasion area */
+	gtk_box_pack_start(GTK_BOX(invasion_area), image, FALSE, TRUE, 0);
+
+	/* Create box to display two vertical side-by-side areas */
+	h_box = gtk_hbox_new(FALSE, 0);
+
+	/*
+	 * Request the whole width of the invasion area, and as much height as
+	 * necessary to fit the children widgets
+	 */
+	gtk_widget_set_size_request(h_box, width, -1);
+
+	/* Pack h_box to invasion area, and attribute extra height to it*/
+	gtk_box_pack_start(GTK_BOX(invasion_area), h_box, TRUE, TRUE, 0);
+
+	/* Create box to display repulse track */
+	repulse_box = gtk_vbox_new(FALSE, 0);
+
+	/* Attribute width of the repulse box */
+	gtk_widget_set_size_request(repulse_box, width_repulse, -1);
+
+	/* Pack repulse box to h_box */
+	gtk_box_pack_start(GTK_BOX(h_box), repulse_box, FALSE, TRUE, 0);
+
+	/* Get slot Pixbuf */
+	orig = xeno_cache[XENO_SLOT];
+	image_w = width_repulse - 4;
+	image_h = image_w * gdk_pixbuf_get_height(orig)
+                      / gdk_pixbuf_get_width(orig);
+	buf = gdk_pixbuf_scale_simple(orig, image_w,image_h, GDK_INTERP_BILINEAR);
+
+	/* Add slots to the repulse track */
+	for (i = 0; i < real_game.num_players; i++)
+	{
+		if (i > 0)
+		{
+			arrow = gtk_arrow_new(GTK_ARROW_UP, GTK_SHADOW_NONE);
+
+			//gtk_widget_set_size_request(arrow, -1, -1);
+
+			gtk_box_pack_start(GTK_BOX(repulse_box), arrow, TRUE, FALSE, 0);
+		}
+
+		/* Make image widget */
+		image = gtk_image_new_from_pixbuf(buf);
+
+		/* Pack image into repulse track area */
+		gtk_box_pack_start(GTK_BOX(repulse_box), image, FALSE, FALSE, 0);
+	}
+
+	/* Destroy local copy of the pixbuf */
+	g_object_unref(G_OBJECT(buf));
+
+	/* Create box to display information (empire defeat, card in wave, ...) */
+	info_box = gtk_vbox_new(FALSE, 0);
+
+	/* Attribute half of the width of the invasion area to the box */
+	gtk_widget_set_size_request(info_box, width_info, -1);
+
+	/* Pack info box to h_box area */
+	gtk_box_pack_start(GTK_BOX(h_box), info_box, FALSE, TRUE, 0);
+
+	/* Insert Xeno status box */
+	xeno_status_box = gtk_hbox_new(FALSE, 0);
+
+	/*
+	 * Request the whole width of the info_box, and as much height as
+	 * necessary to fit the children widgets
+	 */
+	gtk_widget_set_size_request(xeno_status_box, width_info, -1);
+
+	/* Pack Xeno status box */
+	gtk_box_pack_start(GTK_BOX(info_box), xeno_status_box, TRUE, FALSE, 0);
+
+	/* Insert military widget */
+	orig = icon_cache[ICON_MILITARY];
+	image_h = 48;
+	image_w = image_h * gdk_pixbuf_get_width(orig)
+	                  / gdk_pixbuf_get_height(orig);
+	buf = gdk_pixbuf_scale_simple(orig, image_w,image_h, GDK_INTERP_BILINEAR);
+
+	/* Make image widget */
+	image = gtk_image_new_from_pixbuf(buf);
+
+	/* Destroy local copy of the pixbuf */
+	g_object_unref(G_OBJECT(buf));
+
+	//TODO indication of military against xeno and repulse value */
+
+	/* Pack image into invasion area */
+	gtk_box_pack_start(GTK_BOX(xeno_status_box), image, TRUE, FALSE, 0);
+
+	/* Insert size of deck widget */
+	orig = icon_cache[ICON_DRAW];
+	image_h = 48;
+	image_w = image_h * gdk_pixbuf_get_width(orig)
+	                  / gdk_pixbuf_get_height(orig);
+	buf = gdk_pixbuf_scale_simple(orig, image_w,image_h, GDK_INTERP_BILINEAR);
+
+	/* Make image widget */
+	image = gtk_image_new_from_pixbuf(buf);
+
+	/* Destroy local copy of the pixbuf */
+	g_object_unref(G_OBJECT(buf));
+
+	//TODO indication of number of card left for the current wave
+
+	/* Pack image into invasion area */
+	gtk_box_pack_start(GTK_BOX(xeno_status_box), image, TRUE, FALSE, 0);
+
+	/* Insert empire defeat tile */
+	orig = xeno_cache[real_game.xeno_n_defeat == 0 ? XENO_DEFEAT_0 : XENO_DEFEAT_1];
+	image_h = width_info * gdk_pixbuf_get_height(orig)
+	                     / gdk_pixbuf_get_width(orig);
+	buf = gdk_pixbuf_scale_simple(orig, width_info, image_h,
+	                              GDK_INTERP_BILINEAR);
+
+	/* Make image widget */
+	image = gtk_image_new_from_pixbuf(buf);
+
+	/* Destroy local copy of the pixbuf */
+	g_object_unref(G_OBJECT(buf));
+
+	/* Pack image into invasion area */
+	gtk_box_pack_start(GTK_BOX(info_box), image, TRUE, FALSE, 0);
+
+	/* Insert invasion goals */
+	for (i = XENO_ADMIRAL; i <= XENO_CONTRIBUTOR; i++)
+	{
+		orig = xeno_cache[i];
+		image_h = width_info * gdk_pixbuf_get_height(orig)
+		                         / gdk_pixbuf_get_width(orig);
+		buf = gdk_pixbuf_scale_simple(orig, width_info, image_h,
+		                              GDK_INTERP_BILINEAR);
+		/* Make image widget */
+		image = gtk_image_new_from_pixbuf(buf);
+		//TODO is this clipped version better than the full size token?
+		//if yes, maybe replace in the image bundle the full image by the
+		//clipped version
+		gtk_widget_set_size_request(image, width_info, image_h*0.55);
+		//unclipped version
+		//gtk_widget_set_size_request(image, width/2, image_h);
+
+		/* Destroy local copy of the pixbuf */
+		g_object_unref(G_OBJECT(buf));
+
+		/* Pack image into invasion area */
+		gtk_box_pack_start(GTK_BOX(info_box), image, TRUE, FALSE, 0);
+	}
+
+	/* Insert Xeno invasion reward attribution tile */
+	orig = xeno_cache[XENO_TILE_2 + real_game.num_players - 2];
+	image_h = width * gdk_pixbuf_get_height(orig) / gdk_pixbuf_get_width(orig);
+	buf = gdk_pixbuf_scale_simple(orig, width,image_h, GDK_INTERP_BILINEAR);
+
+	/* Make image widget */
+	image = gtk_image_new_from_pixbuf(buf);
+
+	/* Destroy local copy of the pixbuf */
+	g_object_unref(G_OBJECT(buf));
+
+	/* Pack image into invasion area */
+	gtk_box_pack_start(GTK_BOX(invasion_area), image, FALSE, FALSE, 0);
+
+	/* Show all widgets */
+	gtk_widget_show_all(invasion_area);
+}
+
 /*
  * Create a tooltip for vp icon.
  */
@@ -4952,6 +5183,7 @@ void redraw_everything(void)
 	redraw_table();
 	redraw_hand();
 	redraw_goal();
+	redraw_invasion();
 	redraw_phase();
 }
 
@@ -5068,6 +5300,30 @@ static void goal_allocated(GtkWidget *widget, GtkAllocation *allocation,
 
 	/* Redraw goal area */
 	redraw_goal();
+}
+
+/*
+ * Invasion area is re-allocated.
+ */
+static void invasion_allocated(GtkWidget *widget, GtkAllocation *allocation,
+                           gpointer data)
+{
+	static int old_width_invasion, old_height_invasion;
+
+	/* Check for no difference from before */
+	if (allocation->width == old_width_invasion &&
+			allocation->height == old_height_invasion)
+	{
+		/* Do nothing */
+		return;
+	}
+
+	/* Remember current size */
+	old_width_invasion = allocation->width;
+	old_height_invasion = allocation->height;
+
+	/* Redraw goal area */
+	redraw_invasion();
 }
 
 /*
@@ -10201,6 +10457,17 @@ void modify_gui(int reset_card)
 		/* Show goal area */
 		gtk_widget_show(goal_area);
 	}
+	/* Check for invasions disabled */
+	if (!invasion_enabled(&real_game))
+	{
+		/* Hide invasion area */
+		gtk_widget_hide(invasion_area);
+	}
+	else
+	{
+		/* Show invasion area */
+		gtk_widget_show(invasion_area);
+	}
 
 	/* Loop over existing players */
 	for (i = 0; i < real_game.num_players; i++)
@@ -14703,6 +14970,12 @@ int main(int argc, char *argv[])
 	/* Set goal area minimum width */
 	gtk_widget_set_size_request(goal_area, 70, 0);
 
+	/* Create area to display invasion information */
+	invasion_area = gtk_vbox_new(FALSE, 0);
+
+	/* Set invasion area minimum width and height */
+	gtk_widget_set_size_request(invasion_area, 140, -1);
+
 	/* Create vbox for active card areas */
 	active_box = gtk_vbox_new(FALSE, 0);
 
@@ -14814,6 +15087,7 @@ int main(int argc, char *argv[])
 	gtk_box_pack_start(GTK_BOX(table_box), active_box, TRUE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(table_box), v_sep, FALSE, TRUE, 0);
 	gtk_box_pack_start(GTK_BOX(table_box), goal_area, FALSE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(table_box), invasion_area, FALSE, TRUE, 0);
 
 	/* Create area for our hand of cards */
 	hand_area = gtk_fixed_new();
@@ -14829,6 +15103,10 @@ int main(int argc, char *argv[])
 	/* Redraw goal area when resized */
 	g_signal_connect(G_OBJECT(goal_area), "size-allocate",
 	                 G_CALLBACK(goal_allocated), NULL);
+
+	/* Redraw invasion area when resized */
+	g_signal_connect(G_OBJECT(invasion_area), "size-allocate",
+	                 G_CALLBACK(invasion_allocated), NULL);
 
 	/* Create box for action area */
 	action_box = gtk_hbox_new(FALSE, 0);
