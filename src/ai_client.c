@@ -97,7 +97,7 @@ static void handle_status_meta(char *ptr, int size)
 	real_game.expanded = x;
 	if (!get_integer(&x, buf, size, &ptr)) goto format_error;
 	real_game.advanced = x;
-	if (!get_integer(&x, msg_buf, size, &ptr)) goto format_error;
+	if (!get_integer(&x, buf, size, &ptr)) goto format_error;
 	set_game_disabled_options(&real_game, x);
 
 	/* Initialize card designs for this expansion level */
