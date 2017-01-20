@@ -2901,7 +2901,7 @@ void redraw_invasion(void)
 		i = XENO_WAVE_1 + real_game.xeno_wave - 1;
 	}
 
-	/* Load invasion cardback to display */
+	/* Scale invasion cardback to display */
 	orig = xeno_cache[i];
 	image_h = width * gdk_pixbuf_get_height(orig) / gdk_pixbuf_get_width(orig);
 	buf = gdk_pixbuf_scale_simple(orig, width,image_h, GDK_INTERP_BILINEAR);
@@ -2968,7 +2968,7 @@ void redraw_invasion(void)
 	/* Create box to display information (empire defeat, card in wave, ...) */
 	info_box = gtk_vbox_new(FALSE, 0);
 
-	/* Attribute half of the width of the invasion area to the box */
+	/* Attribute width of the information area to the box */
 	gtk_widget_set_size_request(info_box, width_info, -1);
 
 	/* Pack info box to h_box area */
@@ -2986,7 +2986,7 @@ void redraw_invasion(void)
 	/* Pack Xeno status box */
 	gtk_box_pack_start(GTK_BOX(info_box), xeno_status_box, TRUE, FALSE, 0);
 
-	/* Insert military widget */
+	/* Scale military icon */
 	orig = icon_cache[ICON_MILITARY];
 	image_h = 48;
 	image_w = image_h * gdk_pixbuf_get_width(orig)
@@ -3001,10 +3001,11 @@ void redraw_invasion(void)
 
 	//TODO indication of military against xeno and repulse value */
 
-	/* Pack image into invasion area */
+	/* Pack military icpn into xeno_status_box */
 	gtk_box_pack_start(GTK_BOX(xeno_status_box), image, TRUE, FALSE, 0);
 
-	/* Insert size of deck widget */
+	//TODO use the overlay function for this widget?
+	/* Scale deck icon */
 	orig = icon_cache[ICON_DRAW];
 	image_h = 48;
 	image_w = image_h * gdk_pixbuf_get_width(orig)
@@ -3019,10 +3020,10 @@ void redraw_invasion(void)
 
 	//TODO indication of number of card left for the current wave
 
-	/* Pack image into invasion area */
+	/* Pack image into xeno_status_box */
 	gtk_box_pack_start(GTK_BOX(xeno_status_box), image, TRUE, FALSE, 0);
 
-	/* Insert empire defeat tile */
+	/* Scale empire defeat tile */
 	orig = xeno_cache[real_game.xeno_n_defeat == 0 ? XENO_DEFEAT_0 : XENO_DEFEAT_1];
 	image_h = width_info * gdk_pixbuf_get_height(orig)
 	                     / gdk_pixbuf_get_width(orig);
@@ -3035,12 +3036,13 @@ void redraw_invasion(void)
 	/* Destroy local copy of the pixbuf */
 	g_object_unref(G_OBJECT(buf));
 
-	/* Pack image into invasion area */
+	/* Pack image into info_box */
 	gtk_box_pack_start(GTK_BOX(info_box), image, TRUE, FALSE, 0);
 
 	/* Insert invasion goals */
 	for (i = XENO_ADMIRAL; i <= XENO_CONTRIBUTOR; i++)
 	{
+		/* Scale goal image */
 		orig = xeno_cache[i];
 		image_h = width_info * gdk_pixbuf_get_height(orig)
 		                         / gdk_pixbuf_get_width(orig);
@@ -3053,16 +3055,16 @@ void redraw_invasion(void)
 		//clipped version
 		gtk_widget_set_size_request(image, width_info, image_h*0.55);
 		//unclipped version
-		//gtk_widget_set_size_request(image, width/2, image_h);
+		//gtk_widget_set_size_request(image, width_info, -1);
 
 		/* Destroy local copy of the pixbuf */
 		g_object_unref(G_OBJECT(buf));
 
-		/* Pack image into invasion area */
+		/* Pack image into info_box */
 		gtk_box_pack_start(GTK_BOX(info_box), image, TRUE, FALSE, 0);
 	}
 
-	/* Insert Xeno invasion reward attribution tile */
+	/* Scale Xeno invasion reward attribution tile */
 	orig = xeno_cache[XENO_TILE_2 + real_game.num_players - 2];
 	image_h = width * gdk_pixbuf_get_height(orig) / gdk_pixbuf_get_width(orig);
 	buf = gdk_pixbuf_scale_simple(orig, width,image_h, GDK_INTERP_BILINEAR);
