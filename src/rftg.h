@@ -88,15 +88,24 @@
 #define MAX_DECK 328
 
 /*
- * Number of cards in the invasion deck, and wave delimiters.
+ * Number of cards in the invasion deck.
  */
 #define MAX_XENO_DECK 39
-#define MIN_XENO_WAVE_1 0
-#define MAX_XENO_WAVE_1 11
-#define MIN_XENO_WAVE_2 11
-#define MAX_XENO_WAVE_2 22
-#define MIN_XENO_WAVE_3 22
-#define MAX_XENO_WAVE_3 39
+
+/*
+ * Information on waves invasion card.
+ */
+typedef struct _wave_info_t
+{
+	int n;
+	int start;
+	int end;
+} xeno_wave_info_t;
+
+/*
+ * Number of cards by wave and start, end indexes for each wave.
+ */
+extern const xeno_wave_info_t xeno_wave_info[4];
 
 /*
  * Number of powers per card.

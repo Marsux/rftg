@@ -23,6 +23,14 @@
 
 #include "rftg.h"
 
+/* Xeno Invasion wave info */
+const xeno_wave_info_t xeno_wave_info[4] = {
+	{0, 0, 0},
+	{11, 0, 11},
+	{11, 11, 22},
+	{17, 22, 39}
+};
+
 /*
  * Expansion level names.
  */

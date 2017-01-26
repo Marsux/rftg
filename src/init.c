@@ -1487,7 +1487,7 @@ void init_game(game *g)
 		{
 			g->xeno_n_invasion_card[i] = (g->advanced ? 1 : 2)*g->num_players;
 		}
-		g->xeno_n_invasion_card[3] = MAX_XENO_WAVE_3 - MIN_XENO_WAVE_3;
+		g->xeno_n_invasion_card[3] = xeno_wave_info[3].n;
 
 		/* Set the Xeno repulse value according to the number of players */
 		g->xeno_repulse = xeno_repulse_value[g->num_players];
