@@ -1218,7 +1218,7 @@ extern int player_has(game *g, int who, design *d_ptr);
 extern int player_chose(game *g, int who, int act);
 extern int prestige_on_tile(game *g, int who);
 extern int first_draw(game *g);
-extern void move_card(game *g, int which, int who, int where);
+extern void move_card(game *g, int which, int who, int where, int xeno);
 extern void move_start(game *g, int which, int who, int where);
 extern int draw_card(game *g, int who, char *reason);
 extern void draw_cards(game *g, int who, int num, char *reason);

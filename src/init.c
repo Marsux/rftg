@@ -992,7 +992,7 @@ static void init_campaign(game *g)
 					continue;
 
 				/* Move card to campaign location */
-				move_card(g, k, i, WHERE_CAMPAIGN);
+				move_card(g, k, i, WHERE_CAMPAIGN, 0);
 
 				/* Save index */
 				g->camp_status->index[i][j] = k;

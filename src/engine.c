@@ -598,14 +598,14 @@ int first_draw(game *g)
  *
  * This MUST be called when a card is moved to or from a player.
  */
-void move_card(game *g, int which, int owner, int where)
+void move_card(game *g, int which, int owner, int where, int xeno)
 {
 	player *p_ptr;
 	card *c_ptr;
 	int x;
 
 	/* Get card pointer */
-	c_ptr = &g->deck[which];
+	c_ptr = xeno ? &g->xeno_deck[which] : &g->deck[which];
 
 	/* Check for current owner */
 	if (c_ptr->owner != -1)
@@ -766,7 +766,7 @@ int draw_card(game *g, int who, char *reason)
 	if (which == -1) return -1;
 
 	/* Move card to player's hand */
-	move_card(g, which, who, WHERE_HAND);
+	move_card(g, which, who, WHERE_HAND, 0);
 
 	/* Get card pointer */
 	c_ptr = &g->deck[which];
@@ -1175,7 +1175,7 @@ static void perform_debug_moves(game *g, int who)
 				message_add_formatted(g, msg, FORMAT_DEBUG);
 
 				/* Move card */
-				move_card(g, c, owner, where);
+				move_card(g, c, owner, where, 0);
 
 				/* Always place debug cards first in order */
 				g->deck[c].order = -1;
@@ -1663,7 +1663,7 @@ void discard_callback(game *g, int who, int list[], int num)
 	for (i = 0; i < num; i++)
 	{
 		/* Move card to discard */
-		move_card(g, list[i], -1, WHERE_DISCARD);
+		move_card(g, list[i], -1, WHERE_DISCARD, 0);
 
 		/* Message */
 		if (!g->simulation && g->p[who].control->private_message)
@@ -1797,7 +1797,7 @@ void add_good(game *g, int which)
 	if (draw_empty(g)) refresh_draw(g);
 
 	/* Move card to owner */
-	move_card(g, good, c_ptr->owner, WHERE_GOOD);
+	move_card(g, good, c_ptr->owner, WHERE_GOOD, 0);
 
 	/* Mark good with covered card */
 	g->deck[good].covering = which;
@@ -1824,7 +1824,7 @@ void discard_produce_chosen(game *g, int who, int world, int discard,
 	c_ptr = &g->deck[discard];
 
 	/* Move card to discard */
-	move_card(g, discard, -1, WHERE_DISCARD);
+	move_card(g, discard, -1, WHERE_DISCARD, 0);
 
 	/* Message */
 	if (!g->simulation)
@@ -2180,7 +2180,7 @@ void phase_search(game *g)
 			c_ptr = &g->deck[which];
 
 			/* Move card to limbo */
-			move_card(g, which, -1, WHERE_ASIDE);
+			move_card(g, which, -1, WHERE_ASIDE, 0);
 
 			/* Location is known to everyone */
 			c_ptr->misc |= MISC_KNOWN_MASK;
@@ -2274,7 +2274,7 @@ void phase_search(game *g)
 			}
 
 			/* Give card to player */
-			move_card(g, which, i, WHERE_HAND);
+			move_card(g, which, i, WHERE_HAND, 0);
 
 			/* Card is known to player */
 			c_ptr->misc &= ~MISC_KNOWN_MASK;
@@ -2305,7 +2305,7 @@ void phase_search(game *g)
 			if (c_ptr->where == WHERE_ASIDE)
 			{
 				/* Move to discard */
-				move_card(g, j, -1, WHERE_DISCARD);
+				move_card(g, j, -1, WHERE_DISCARD, 0);
 			}
 		}
 
@@ -2608,7 +2608,7 @@ void place_card(game *g, int who, int which)
 	c_ptr = &g->deck[which];
 
 	/* Move card to player */
-	move_card(g, which, who, WHERE_ACTIVE);
+	move_card(g, which, who, WHERE_ACTIVE, 0);
 
 	/* Location is known to all */
 	c_ptr->misc |= MISC_KNOWN_MASK;
@@ -2808,7 +2808,7 @@ int devel_callback(game *g, int who, int which, int list[], int num,
 			if (o_ptr->code & P2_DISCARD_REDUCE)
 			{
 				/* Discard card */
-				move_card(g, special[i], -1, WHERE_DISCARD);
+				move_card(g, special[i], -1, WHERE_DISCARD, 0);
 
 				/* Message */
 				if (!g->simulation)
@@ -2927,7 +2927,7 @@ int devel_callback(game *g, int who, int which, int list[], int num,
 		}
 
 		/* Move to discard */
-		move_card(g, list[i], -1, WHERE_DISCARD);
+		move_card(g, list[i], -1, WHERE_DISCARD, 0);
 	}
 
 	/* Count player hand size */
@@ -2967,7 +2967,7 @@ int devel_callback(game *g, int who, int which, int list[], int num,
 			if (list[0] == -1) continue;
 
 			/* Move saved card */
-			move_card(g, list[0], who, WHERE_SAVED);
+			move_card(g, list[0], who, WHERE_SAVED, 0);
 
 			/* Message */
 			if (!g->simulation)
@@ -4665,7 +4665,7 @@ int settle_callback(game *g, int who, int which, int list[], int num,
 			if (o_ptr->code & P3_DISCARD)
 			{
 				/* Discard card */
-				move_card(g, special[i], -1, WHERE_DISCARD);
+				move_card(g, special[i], -1, WHERE_DISCARD, 0);
 
 				/* Message */
 				if (!g->simulation)
@@ -5226,7 +5226,7 @@ int settle_callback(game *g, int who, int which, int list[], int num,
 		}
 
 		/* Discard */
-		move_card(g, list[i], -1, WHERE_DISCARD);
+		move_card(g, list[i], -1, WHERE_DISCARD, 0);
 	}
 
 	/* Count player hand size */
@@ -5322,7 +5322,7 @@ int settle_callback(game *g, int who, int which, int list[], int num,
 			if (list[0] == -1) continue;
 
 			/* Move card to saved area */
-			move_card(g, list[0], who, WHERE_SAVED);
+			move_card(g, list[0], who, WHERE_SAVED, 0);
 
 			/* Message */
 			if (!g->simulation)
@@ -5697,7 +5697,7 @@ int takeover_callback(game *g, int special, int world)
 		if (o_ptr->code & P3_DISCARD)
 		{
 			/* Discard card */
-			move_card(g, special, -1, WHERE_DISCARD);
+			move_card(g, special, -1, WHERE_DISCARD, 0);
 		}
 		else
 		{
@@ -6097,7 +6097,7 @@ int upgrade_chosen(game *g, int who, int replacement, int old)
 			if (g->deck[x].covering == old)
 			{
 				/* Move good to discard */
-				move_card(g, x, -1, WHERE_DISCARD);
+				move_card(g, x, -1, WHERE_DISCARD, 0);
 			}
 		}
 
@@ -6115,13 +6115,13 @@ int upgrade_chosen(game *g, int who, int replacement, int old)
 			if (g->deck[i].where == WHERE_SAVED)
 			{
 				/* Move to discard */
-				move_card(g, i, -1, WHERE_DISCARD);
+				move_card(g, i, -1, WHERE_DISCARD, 0);
 			}
 		}
 	}
 
 	/* Discard old card */
-	move_card(g, old, -1, WHERE_DISCARD);
+	move_card(g, old, -1, WHERE_DISCARD, 0);
 
 	/* Place new card */
 	place_card(g, who, replacement);
@@ -6489,7 +6489,7 @@ static void flip_world(game *g, int who)
 	else
 	{
 		/* Move card to hand */
-		move_card(g, which, who, WHERE_HAND);
+		move_card(g, which, who, WHERE_HAND, 0);
 
 		/* Make card known to player */
 		c_ptr->misc &= ~MISC_KNOWN_MASK;
@@ -6601,7 +6601,7 @@ void settle_finish(game *g, int who, int world, int mil_only, int special,
 	if (o_ptr && (o_ptr->code & P3_DISCARD))
 	{
 		/* Discard */
-		move_card(g, special, -1, WHERE_DISCARD);
+		move_card(g, special, -1, WHERE_DISCARD, 0);
 
 		/* Message */
 		if (!g->simulation)
@@ -7256,7 +7256,7 @@ int defend_callback(game *g, int who, int deficit, int list[], int num,
 			if (o_ptr->code == (P3_DISCARD | P3_EXTRA_MILITARY))
 			{
 				/* Discard card */
-				move_card(g, special[i], -1, WHERE_DISCARD);
+				move_card(g, special[i], -1, WHERE_DISCARD, 0);
 
 				/* Message */
 				if (!g->simulation)
@@ -7404,7 +7404,7 @@ int defend_callback(game *g, int who, int deficit, int list[], int num,
 		for (i = 0; i < num; i++)
 		{
 			/* Discard card */
-			move_card(g, list[i], -1, WHERE_DISCARD);
+			move_card(g, list[i], -1, WHERE_DISCARD, 0);
 		}
 	}
 
@@ -7846,7 +7846,7 @@ int resolve_takeover(game *g, int who, int world, int special,
 		}
 
 		/* Discard card */
-		move_card(g, world, -1, WHERE_DISCARD);
+		move_card(g, world, -1, WHERE_DISCARD, 0);
 
 		/* Award prestige for success */
 		if (prestige) gain_prestige(g, who, prestige, prestige_reason);
@@ -7867,7 +7867,7 @@ int resolve_takeover(game *g, int who, int world, int special,
 				if (g->deck[i].where == WHERE_SAVED)
 				{
 					/* Move to discard */
-					move_card(g, i, -1, WHERE_DISCARD);
+					move_card(g, i, -1, WHERE_DISCARD, 0);
 				}
 			}
 		}
@@ -7885,7 +7885,7 @@ int resolve_takeover(game *g, int who, int world, int special,
 				if (g->deck[x].covering != world) continue;
 
 				/* Discard good as well */
-				move_card(g, x, -1, WHERE_DISCARD);
+				move_card(g, x, -1, WHERE_DISCARD, 0);
 			}
 
 			/* World has no more goods */
@@ -7897,7 +7897,7 @@ int resolve_takeover(game *g, int who, int world, int special,
 	}
 
 	/* Transfer ownership */
-	move_card(g, world, who, WHERE_ACTIVE);
+	move_card(g, world, who, WHERE_ACTIVE, 0);
 
 	/* Set new card order */
 	c_ptr->order = p_ptr->table_order++;
@@ -7926,7 +7926,7 @@ int resolve_takeover(game *g, int who, int world, int special,
 			if (g->deck[x].covering != world) continue;
 
 			/* Discard good as well */
-			move_card(g, x, who, WHERE_GOOD);
+			move_card(g, x, who, WHERE_GOOD, 0);
 		}
 	}
 
@@ -7940,7 +7940,7 @@ int resolve_takeover(game *g, int who, int world, int special,
 			if (g->deck[i].where == WHERE_SAVED)
 			{
 				/* Move to new owner */
-				move_card(g, i, who, WHERE_SAVED);
+				move_card(g, i, who, WHERE_SAVED, 0);
 
 				/* Only new owner knows about card */
 				g->deck[i].misc &= ~MISC_KNOWN_MASK;
@@ -8506,7 +8506,7 @@ void trade_chosen(game *g, int who, int which, int no_bonus)
 	c_ptr = &g->deck[which];
 
 	/* Move good card to discard */
-	move_card(g, first_good(g, who, which), -1, WHERE_DISCARD);
+	move_card(g, first_good(g, who, which), -1, WHERE_DISCARD, 0);
 
 	/* Uncover production card */
 	c_ptr->num_goods--;
@@ -8965,7 +8965,7 @@ int good_chosen(game *g, int who, int c_idx, int o_idx,
 		}
 
 		/* Move good card to discard */
-		move_card(g, first_good(g, who, g_list[i]), -1, WHERE_DISCARD);
+		move_card(g, first_good(g, who, g_list[i]), -1, WHERE_DISCARD, 0);
 
 		/* Uncover production card */
 		c_ptr->num_goods--;
@@ -9141,7 +9141,7 @@ static void draw_lucky(game *g, int who)
 	if (cost == c_ptr->d_ptr->cost)
 	{
 		/* Move card to player */
-		move_card(g, which, who, WHERE_HAND);
+		move_card(g, which, who, WHERE_HAND, 0);
 
 		/* Make card known to player */
 		c_ptr->misc &= ~MISC_KNOWN_MASK;
@@ -9161,7 +9161,7 @@ static void draw_lucky(game *g, int who)
 	else
 	{
 		/* Move card to discard */
-		move_card(g, which, -1, WHERE_DISCARD);
+		move_card(g, which, -1, WHERE_DISCARD, 0);
 
 		/* Make card known to everyone */
 		c_ptr->misc |= MISC_KNOWN_MASK;
@@ -9286,7 +9286,7 @@ static void ante_card(game *g, int who)
 	if (!success)
 	{
 		/* Discard ante */
-		move_card(g, chosen, -1, WHERE_DISCARD);
+		move_card(g, chosen, -1, WHERE_DISCARD, 0);
 
 		/* Location is known to all */
 		g->deck[chosen].misc |= MISC_KNOWN_MASK;
@@ -9295,7 +9295,7 @@ static void ante_card(game *g, int who)
 		for (i = 0; i < cost; i++)
 		{
 			/* Discard drawn card */
-			move_card(g, drawn[i], -1, WHERE_DISCARD);
+			move_card(g, drawn[i], -1, WHERE_DISCARD, 0);
 
 			/* Location is known to all */
 			g->deck[drawn[i]].misc |= MISC_KNOWN_MASK;
@@ -9339,7 +9339,7 @@ static void ante_card(game *g, int who)
 		if (drawn[i] == chosen)
 		{
 			/* Give card to player */
-			move_card(g, chosen, who, WHERE_HAND);
+			move_card(g, chosen, who, WHERE_HAND, 0);
 
 			/* Make card known to player */
 			g->deck[drawn[i]].misc &= ~MISC_KNOWN_MASK;
@@ -9348,7 +9348,7 @@ static void ante_card(game *g, int who)
 		else
 		{
 			/* Discard card */
-			move_card(g, drawn[i], -1, WHERE_DISCARD);
+			move_card(g, drawn[i], -1, WHERE_DISCARD, 0);
 
 			/* Location is known to all */
 			g->deck[drawn[i]].misc |= MISC_KNOWN_MASK;
@@ -9443,7 +9443,7 @@ int consume_hand_chosen(game *g, int who, int c_idx, int o_idx,
 	for (i = 0; i < n; i++)
 	{
 		/* Move card to discard */
-		move_card(g, list[i], -1, WHERE_DISCARD);
+		move_card(g, list[i], -1, WHERE_DISCARD, 0);
 
 		/* Check for reward per two cards */
 		if ((o_ptr->code & P4_CONSUME_TWO) && (i % 2 != 0)) continue;
@@ -10927,7 +10927,7 @@ void produce_chosen(game *g, int who, int c_idx, int o_idx)
 		for (i = 0; i < count; i++)
 		{
 			/* Move card */
-			move_card(g, list[i], who, WHERE_HAND);
+			move_card(g, list[i], who, WHERE_HAND, 0);
 
 			/* Private message */
 			if (g->p[who].control->private_message)
@@ -11875,7 +11875,7 @@ void phase_discard(game *g)
 				}
 
 				/* Take card */
-				move_card(g, j, i, WHERE_HAND);
+				move_card(g, j, i, WHERE_HAND, 0);
 
 				/* Adjust known flags */
 				c_ptr->misc &= ~MISC_KNOWN_MASK;
@@ -12983,7 +12983,7 @@ void start_chosen(game *g)
 			if (hand[0] == -1) continue;
 
 			/* Move card to saved area */
-			move_card(g, hand[0], i, WHERE_SAVED);
+			move_card(g, hand[0], i, WHERE_SAVED, 0);
 
 			/* Message */
 			if (!g->simulation)

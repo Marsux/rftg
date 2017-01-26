@@ -239,7 +239,7 @@ static void handle_status_card(char *ptr, int size)
 	if (!get_integer(&start_where, buf, size, &ptr)) goto format_error;
 
 	/* Move card to current location */
-	move_card(&real_game, x, owner, where);
+	move_card(&real_game, x, owner, where, 0);
 
 	/* Move "start of phase" location */
 	move_start(&real_game, x, start_owner, start_where);
