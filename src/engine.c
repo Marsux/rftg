@@ -602,6 +602,128 @@ int first_draw(game *g)
 }
 
 /*
+ * Refresh the invasion draw deck. Only include wave 3 cards.
+ */
+static void refresh_invasion_draw(game *g)
+{
+	card *c_ptr;
+	int i;
+
+	/* Don't refresh cards before wave 3 */
+	if (g->xeno_wave < 3)
+	{
+		/* Error */
+		display_error("Invasion deck refresh not allowed before wave 3!\n");
+		abort();
+	}
+
+	/* Message */
+	if (!g->simulation)
+	{
+		/* Send message */
+		message_add_formatted(g, "Refreshing invasion deck.\n", FORMAT_EM);
+	}
+
+	/* Loop over cards */
+	for (i = xeno_wave_info[3].start; i < xeno_wave_info[3].end; i++)
+	{
+		/* Get card pointer */
+		c_ptr = &g->xeno_deck[i];
+
+		/* Skip cards not in discard pile */
+		if (c_ptr->where != WHERE_XENO_DISCARD) continue;
+
+		/* Move card to draw deck */
+		c_ptr->where = WHERE_XENO_DECK;
+
+		/* Card's location is no longer known to anyone */
+		c_ptr->misc &= ~MISC_KNOWN_MASK;
+	}
+
+	/* Update number of cards available in wave */
+	g->xeno_n_invasion_card[3] = xeno_wave_info[3].n;
+}
+
+/*
+ * Return a card index from the invasion deck.
+ * If deck is empty after this returns, it must be reshuffled.
+ */
+static int random_invasion_draw(game *g)
+{
+	card *c_ptr = NULL;
+	int i, n;
+	char msg[1024];
+
+	/* Do not draw invasion card before wave 1 */
+	if (g->xeno_wave < 1)
+	{
+		display_error("Do not draw invasion card before first wave!\n");
+		abort();
+	}
+
+	/* Determine number of cards to draw from */
+	if (g->xeno_wave < 3)
+	{
+		/* For the first two waves, the number of cards in the deck
+		 * does not coincide with the number of cards to draw from */
+		n = xeno_wave_info[g->xeno_wave].n
+		                   - (g->advanced ? 1 : 2)*g->num_players
+						   + g->xeno_n_invasion_card[g->xeno_wave];
+
+		/* Check for no card available */
+		if (!n)
+		{
+			/* This should not happen before wave 3, display error and abort */
+			sprintf(msg, "Invasion card deck exhausted in wave %d!\n",
+			              g->xeno_wave);
+			display_error(msg);
+			abort();
+		}
+	}
+	else
+	{
+		/* Get the number of cards in the deck */
+		n = g->xeno_n_invasion_card[g->xeno_wave];
+
+		/* Check for no cards */
+		if (!n)
+		{
+			/* Refresh draw deck */
+			refresh_invasion_draw(g);
+
+			/* Recount */
+			n = g->xeno_n_invasion_card[g->xeno_wave];
+		}
+	}
+
+	/* Choose randomly */
+	n = game_rand(g) % n;
+
+	/* Loop over cards */
+	for (i = xeno_wave_info[g->xeno_wave].start;
+	     i < xeno_wave_info[g->xeno_wave].end; i++)
+	{
+		/* Get card pointer */
+		c_ptr = &g->xeno_deck[i];
+
+		/* Skip cards not in draw deck */
+		if (c_ptr->where != WHERE_XENO_DECK) continue;
+
+		/* Check for chosen card */
+		if (!(n--)) break;
+	}
+
+	/* Clear chosen card's location */
+	c_ptr->where = -1;
+
+	/* Decrement the number of invasion cards in the deck */
+	g->xeno_n_invasion_card[g->xeno_wave]--;
+
+	/* Return chosen card */
+	return i;
+}
+
+/*
  * Move a card, keeping track of linked lists.
  *
  * This MUST be called when a card is moved to or from a player.
@@ -11911,6 +12033,86 @@ void phase_discard(game *g)
 	}
 }
 
+/* int comparison function */
+int cmp_int(const void *a, const void *b)
+{
+	const int *ia = (const int *) a;
+	const int *ib = (const int *) b;
+	return *ib - *ia;
+}
+
+/*
+ * Handle the Invasion Phase.
+ */
+void phase_invasion(game *g)
+{
+	int i;
+	int card_idx[MAX_PLAYER];
+	char msg[1024];
+
+	/* Check for no invasion phase */
+	if (g->round < 3)
+	{
+		/* Remove a card from the Wave 0 deck */
+		g->xeno_n_invasion_card[0]--;
+
+		/* Increment wave if necessary */
+		if (g->round == 2) g->xeno_wave++;
+
+		/* Do not perform any other action in the phase */
+		return;
+	}
+
+	/* Check for first invasion phase */
+	if (g->round == 3)
+	{
+		/* Setup the repulse track */
+	}
+	else
+	{
+		/* Update the repulse track */
+	}
+
+	/* Check for end of game by repulsion of Xeno */
+
+	/* Draw Xeno invasion cards */
+	for (i = 0; i < g->num_players; i++) card_idx[i] = random_invasion_draw(g);
+
+	/* Sort the cards by value, assumes they are inserted in increasing order
+	 * in the deck
+	 */
+	qsort(card_idx, g->num_players, sizeof(int), cmp_int);
+
+	/* Attribute cards to players according to their position on the track */
+	for (i = 0; i < g->num_players; i++)
+	{
+		/* Message */
+		if (!g->simulation)
+		{
+			/* Prepare message */
+			sprintf(msg, "%s drawn\n", g->xeno_deck[card_idx[i]].d_ptr->name);
+
+			/* Send message */
+			message_add(g, msg);
+		}
+
+		/* Move card to discard */
+		move_card(g, card_idx[i], -1, WHERE_XENO_DISCARD, 1);
+	}
+
+	/* Get players defense decisions */
+
+	/* Attribute rewards */
+
+	/* Check for empire defeat */
+
+	/* Increment wave */
+	if (g->xeno_wave < 3 && g->xeno_n_invasion_card[g->xeno_wave] == 0)
+	{
+		g->xeno_wave++;
+	}
+}
+
 /*
  * Return the minimum amount of progress needed to claim a "most" goal.
  */
@@ -13872,7 +14074,6 @@ int game_round(game *g)
 	/* Handle discard phase */
 	phase_discard(g);
 
-
 	/* Check for aborted game */
 	if (g->game_over) return 0;
 
@@ -13881,6 +14082,20 @@ int game_round(game *g)
 
 	/* Check intermediate goals */
 	check_goals(g);
+
+	/* Run invasion phase*/
+	if (invasion_enabled(g))
+	{
+		/* Check for real game */
+		if (!g->simulation)
+		{
+			/* Add message */
+			message_add_formatted(g, "--- Invasion phase ---\n", FORMAT_PHASE);
+		}
+
+		/* Handle invasion phase */
+		phase_invasion(g);
+	}
 
 	/* Check for out of VPs */
 	if (g->vp_pool <= 0) g->game_over = 1;
