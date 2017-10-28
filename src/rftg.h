@@ -646,6 +646,7 @@ extern const int8_t xeno_repulse_value[6];
 #define CHOICE_SEARCH_KEEP      23
 #define CHOICE_OORT_KIND        24
 #define CHOICE_XENO_DEFEND      25
+#define CHOICE_DAMAGE           26
 #define CHOICE_CONTRIBUTE       27
 
 /*

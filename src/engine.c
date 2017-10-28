@@ -13237,6 +13237,93 @@ int cmp_int(const void *a, const void *b)
 }
 
 
+static void damage_chosen(game *g, int who, int which)
+{
+	card *c_ptr;
+	player *p_ptr;
+	char msg[1024];
+
+	/* Get player pointer */
+	p_ptr = &g->p[who];
+
+	/* Get card pointer */
+	c_ptr = &g->deck[which];
+
+	/* Discard goods. Assumes there is at most one good on a world,
+	 * as is the case in XI
+	 */
+	if (c_ptr->num_goods > 0)
+	{
+		/* Move covering good to discard */
+		move_card(g, first_good(g, who, which), -1, WHERE_DISCARD);
+
+		/* reset number of goods on card */
+		c_ptr->num_goods = 0;
+	}
+
+	/* Mark world as damaged */
+	c_ptr->misc |= MISC_DAMAGED;
+
+	/* Message */
+	if (!g->simulation)
+	{
+		/* Format message */
+		sprintf(msg, "%s is defeated by Xeno: %s is damaged.\n",
+		        p_ptr->name, c_ptr->d_ptr->name);
+
+		/* Send message */
+		message_add(g, msg);
+	}
+}
+
+/*
+ * Ask player to damage a world.
+ */
+static void damage_world(game *g, int who)
+{
+	card *c_ptr;
+	int x;
+	int list[MAX_DECK], n = 0;
+
+	/* Start at first active card */
+	x = g->p[who].head[WHERE_ACTIVE];
+
+	/* Loop over active cards */
+	for ( ; x != -1; x = g->deck[x].next)
+	{
+		/* Get card pointer */
+		c_ptr = &g->deck[x];
+
+		/* Skip non-worlds */
+		if (c_ptr->d_ptr->type != TYPE_WORLD) continue;
+
+		/* Skip damaged worlds */
+		if (c_ptr->misc & MISC_DAMAGED) continue;
+
+		/* Add world to list */
+		list[n++] = x;
+	}
+
+	printf("%d", n);
+	for (x = 0; x < n; x++) printf(" %d", list[x]);
+	printf("\n");
+
+	/* Check for world to damage */
+	if (!n) return;
+
+	/* If there are several options, ask player for a damage choice */
+	if (n > 1) ask_player(g, who, CHOICE_DAMAGE, list, &n, NULL, NULL, 0, 0, 0);
+
+	/* Check for illegal answer */
+	if (n != 1) g->game_over = 1;
+
+	/* Check for aborted game */
+	if (g->game_over) return;
+
+	/* Damage world */
+	damage_chosen(g, who, list[0]);
+}
+
 /*
  * Handle the Invasion Phase.
  */
@@ -13503,6 +13590,8 @@ void phase_invasion(game *g)
 		}
 		/* Failure to defend against invasion */
 		else {
+			/* Damage a world if possible */
+			damage_world(g, i);
 		}
 	}
 

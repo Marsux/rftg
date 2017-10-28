@@ -783,6 +783,13 @@ static void determine_message(game *g, int who, int type, int list[], int *nl,
 			        arg1 + 1);
 			break;
 
+		/* Choose a world damaged by invasion */
+		case CHOICE_XENO_DAMAGE:
+
+			/* Create prompt */
+			sprintf(msg, "Choose world damaged by Xeno");
+			break;
+
 		/* Error */
 		default:
 			display_error("Unknown choice type!\n");

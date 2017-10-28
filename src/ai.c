@@ -8219,6 +8219,20 @@ static void ai_choose_defend_invasion(game *g, int who, int deficit,
 }
 
 /*
+ * Choose damaged world.
+ */
+static void ai_choose_damage(game *g, int who, int list[], int *num)
+{
+	/* For the time being, select the first world */
+	/* TODO write better AI behaviour */
+	/* If no world proposed, return */
+	if (*num == 0) return;
+
+	/* Select the first option */
+	*num = 1;
+}
+
+/*
  * Choose contribution against Xeno.
  */
 static void ai_choose_contribute(game *g, int who, int list[], int *num)
@@ -8453,6 +8467,14 @@ static void ai_make_choice(game *g, int who, int type, int list[], int *nl,
 
 			/* Choose defense method */
 			ai_choose_defend_invasion(g, who, arg1, list, nl, special, ns);
+			rv = 0;
+			break;
+
+		/* Choose world damaged by invasion */
+		case CHOICE_DAMAGE:
+
+			/* Choose defense method */
+			ai_choose_damage(g, who, list, nl);
 			rv = 0;
 			break;
 
