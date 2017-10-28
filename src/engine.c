@@ -12988,7 +12988,7 @@ int defend_invasion_player(game *g, int who, int wave_strength)
 	int types[MAX_GOOD];
 	int n_cards, n, num_special = 0;
 	power *o_ptr;
-    int defense = 0, deficit;
+	int defense = 0, deficit;
 	int xeno_strength;
 
 	/* Get player pointer */
