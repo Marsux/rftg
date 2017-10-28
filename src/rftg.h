@@ -983,14 +983,29 @@ typedef struct player
 
 } player;
 
-struct repulse_info
+typedef struct repulse_info
 {
+	/* Player index */
 	int8_t player;
+
+	/* Non-specific, non-conditional military strength */
 	int8_t strength;
-	int8_t done;
+
+	/* Strength plus non-conditional stregnth against Xeno */
+	int8_t xeno_strength;
+
+	/* Xeno_strength of the previous invasion phase */
+	int8_t old_strength;
+
+	/* Position in the repulse stack */
+	int8_t pos;
+
+	/* Pointer to the previous repulse_info on the repulse track */
 	struct repulse_info *prev;
+
+	/* Pointer to the next repulse_info on the repulse track */
 	struct repulse_info *next;
-};
+} repulse_info;
 
 /*
  * Information about a game.
@@ -1107,6 +1122,9 @@ typedef struct game
 
 	/* Xeno repulse value */
 	int8_t xeno_repulse;
+
+	/* Empire military against Xeno*/
+	int8_t empire_military;
 
 	/* Xeno repulse track, a doubly chained list. The stack provides storage. */
 	struct repulse_info *xeno_repulse_track;
@@ -1320,6 +1338,7 @@ extern int goal_minimum(int goal);
 extern void check_goal_loss(game *g, int who, int goal);
 extern void check_goals(game *g);
 extern int total_military(game *g, int who);
+extern void xeno_military(game *g, repulse_info *r);
 extern int get_score_bonus(game *g, int who, int which);
 extern void score_game(game *g);
 extern char *action_name(int act);

@@ -1474,13 +1474,16 @@ void init_game(game *g)
 	}
 
 	/* Init invasion related variables if invasion mode is selected */
-	if (expansion_has_invasion(g->expanded) && !g->invasion_disabled)
+	if (invasion_enabled(g))
 	{
 		/* Empire has not yet been defeated */
 		g->xeno_n_defeat = 0;
 
 		/* First two rounds have no invasion wave */
 		g->xeno_wave = 0;
+
+		/* Empire military is set to 0 */
+		g->empire_military = 0;
 
 		/*
 		 * Set the number of cards in the invasion deck by wave according to

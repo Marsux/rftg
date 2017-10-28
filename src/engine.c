@@ -12248,6 +12248,114 @@ void phase_discard(game *g)
 	}
 }
 
+/* Insert a repulse info in the repulse track. In case of equality, inserts on
+ * top.
+ */
+static void repulse_track_insert(game *g, repulse_info *r)
+{
+	repulse_info *cur, *prev;
+
+	/* Look for the position where to insert */
+	for (prev = NULL, cur = g->xeno_repulse_track;
+	     cur != NULL && r->xeno_strength < cur->xeno_strength;
+	     prev = cur, cur = cur->next);
+
+	/* Make the start of the track point to r */
+	if (prev == NULL)
+	{
+		/* Case of insertion at the beginning of the track */
+		g->xeno_repulse_track = r;
+	}
+	else
+	{
+		/* Other case */
+		prev->next = r;
+	}
+
+	/* Connect r to it predecessor */
+	r->prev = prev;
+
+	/* Connect r to its successor */
+	r->next = cur;
+
+	/* Make the end of the track point to r */
+	if (cur != NULL)
+	{
+		/* Case of insertion at the beginning of the track */
+		cur->prev = r;
+	}
+}
+
+/* Move item r before item s in the repulse_track of game g.
+ * Assumes r was not at the beginning.
+ */
+static void repulse_track_move_before(game *g, repulse_info *r,
+                                               repulse_info *s)
+{
+	/* Remove r from its previous position */
+	r->prev->next = r->next;
+	if (r->next) r->next->prev = r->prev;
+
+	/* Update predecessor and successor of r */
+	r->prev = s->prev;
+	r->next = s;
+
+	/* Insert r to it new position */
+	if (s->prev == NULL) g->xeno_repulse_track = r;
+	else s->prev->next = r;
+	s->prev = r;
+}
+
+/* Move item r after item s in the repulse_track of game g.
+ * Assumes r was not at the end.
+ */
+static void repulse_track_move_after(game *g, repulse_info *r,
+                                              repulse_info *s)
+{
+	/* Remove r from its previous position */
+	if (r->prev) r->prev->next = r->next;
+	r->next->prev = r->prev;
+
+	/* Update predecessor and successor of r */
+	r->prev = s;
+	r->next = s->next;
+
+	/* Insert r to its new position */
+	if (s->next != NULL) s->next->prev = r;
+	s->next = r;
+
+}
+
+
+				/* Take card */
+				move_card(g, j, i, WHERE_HAND);
+
+				/* Adjust known flags */
+				c_ptr->misc &= ~MISC_KNOWN_MASK;
+				c_ptr->misc |= (1 << i);
+
+				/* Count cards taken */
+				taken++;
+			}
+
+			/* Check for cards taken */
+			if (taken > 0)
+			{
+				/* Message */
+				if (!g->simulation)
+				{
+					/* Format message */
+					sprintf(msg, "%s takes %d discard%s.\n",
+					        g->p[i].name, taken, PLURAL(taken));
+
+					/* Send message */
+					message_add(g, msg);
+				}
+			}
+		}
+	}
+}
+
 /* int comparison function */
 int cmp_int(const void *a, const void *b)
 {
@@ -14429,6 +14537,117 @@ int total_military(game *g, int who)
 
 	/* Return amount of military */
 	return amt;
+}
+
+/*
+ * Update military strength info of a repulse_info
+ */
+void xeno_military(game *g, repulse_info *r)
+{
+	power_where w_list[100];
+	power *o_ptr;
+	int i, n, who, amt = 0, amt_x = 0;
+
+	/* Get player id */
+	who = r->player;
+
+	/* Get list of settle powers */
+	n = get_powers(g, who, PHASE_SETTLE, w_list);
+
+	/* Loop over powers */
+	for (i = 0; i < n; i++)
+	{
+		/* Get power pointer */
+		o_ptr = w_list[i].o_ptr;
+
+		/* Ignore non military powers */
+		if (!(o_ptr->code & P3_EXTRA_MILITARY)) continue;
+
+		/* Check for non-specific, non-conditional military */
+		if (o_ptr->code == P3_EXTRA_MILITARY)
+		{
+			/* Add to military */
+			amt += o_ptr->value;
+
+			/* Go to next power */
+			continue;
+		}
+
+		/* Check for non-specific military per military world */
+		if (o_ptr->code == (P3_EXTRA_MILITARY | P3_PER_MILITARY))
+		{
+			/* Add to military */
+			amt += count_active_flags(g, who, FLAG_MILITARY);
+
+			/* Go to next power */
+			continue;
+		}
+
+		/* Check for non-specific military per chromosome flag */
+		if (o_ptr->code == (P3_EXTRA_MILITARY | P3_PER_CHROMO))
+		{
+			/* Add to military */
+			amt += count_active_flags(g, who, FLAG_CHROMO);
+
+			/* Go to next power */
+			continue;
+		}
+
+		/* Check for non-specific military per imperium flag */
+		if (o_ptr->code == (P3_EXTRA_MILITARY | P3_PER_IMPERIUM))
+		{
+			/* Add to military */
+			amt += count_active_flags(g, who, FLAG_IMPERIUM);
+
+			/* Go to next power */
+			continue;
+		}
+
+		/* Check for non-specific military per rebel military world */
+		if (o_ptr->code == (P3_EXTRA_MILITARY | P3_PER_REBEL_MILITARY))
+		{
+			/* Add to military */
+			amt += count_active_flags(g, who, FLAG_MILITARY | FLAG_REBEL);
+
+			/* Go to next power */
+			continue;
+		}
+
+		/* Check for only if Imperium card active */
+		if (o_ptr->code == (P3_EXTRA_MILITARY | P3_IF_IMPERIUM))
+		{
+			/* Check for Imperium flag */
+			if (count_active_flags(g, who, FLAG_IMPERIUM))
+			{
+				/* Add power's value */
+				amt += o_ptr->value;
+
+				/* Go to next power */
+				continue;
+			}
+		}
+
+		/* Ignore non Xeno specific military power */
+		if (!(o_ptr->code & P3_XENO)) continue;
+
+		/* If power requires payment, skip power */
+		if (o_ptr->code & P3_CONSUME_ALIEN) continue;
+
+		/* Check for per peaceful military */
+		if (o_ptr->code & P3_PER_PEACEFUL)
+		{
+			amt_x += count_active_flags(g, who, FLAG_PEACEFUL);
+		}
+		/* Add military power */
+		else
+		{
+			amt_x += o_ptr->value;
+		}
+	}
+
+	/* Update military strength */
+	r->strength = amt;
+	r->xeno_strength = amt + amt_x;
 }
 
 /*
