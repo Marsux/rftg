@@ -775,6 +775,14 @@ static void determine_message(game *g, int who, int type, int list[], int *nl,
 			sprintf(msg, "Choose Alien Oort Cloud Refinery kind");
 			break;
 
+		/* Choose a method of defense against a takeover */
+		case CHOICE_XENO_DEFEND:
+
+			/* Create prompt */
+			sprintf(msg, "Choose defense against invasion (need %d extra defense)",
+			        arg1 + 1);
+			break;
+
 		/* Error */
 		default:
 			display_error("Unknown choice type!\n");

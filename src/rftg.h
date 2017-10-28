@@ -645,6 +645,7 @@ extern const int8_t xeno_repulse_value[6];
 #define CHOICE_SEARCH_TYPE      22
 #define CHOICE_SEARCH_KEEP      23
 #define CHOICE_OORT_KIND        24
+#define CHOICE_XENO_DEFEND      25
 #define CHOICE_CONTRIBUTE       27
 
 /*
@@ -1331,6 +1332,13 @@ extern void phase_produce_end(game *g);
 extern void produce_player(game *g, int who);
 extern void phase_produce(game *g);
 extern void phase_discard(game *g);
+extern int defend_invasion_player(game *g, int who, int wave_strength);
+
+extern int defend_invasion_callback(game *g, int who, int deficit,
+                                    int list[], int num,
+                                    int special[], int num_special,
+                                    int test_only);
+
 extern int expansion_has_goals(int exp);
 extern int expansion_has_takeovers(int exp);
 extern int expansion_has_prestige(int exp);

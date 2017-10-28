@@ -8206,6 +8206,19 @@ static int ai_choose_oort_kind(game *g, int who)
 }
 
 /*
+ * Choose a method to defend against invasion.
+ */
+static void ai_choose_defend_invasion(game *g, int who, int deficit,
+                                      int list[], int *num,
+                                      int special[], int *num_special)
+{
+	/* For the time being, do not add any optional defense */
+	/* TODO write the AI code */
+	*num = 0;
+	*num_special = 0;
+}
+
+/*
  * Choose contribution against Xeno.
  */
 static void ai_choose_contribute(game *g, int who, int list[], int *num)
@@ -8433,6 +8446,14 @@ static void ai_make_choice(game *g, int who, int type, int list[], int *nl,
 
 			/* Choose kind */
 			rv = ai_choose_oort_kind(g, who);
+			break;
+
+		/* Choose a method of defense against invasion */
+		case CHOICE_XENO_DEFEND:
+
+			/* Choose defense method */
+			ai_choose_defend_invasion(g, who, arg1, list, nl, special, ns);
+			rv = 0;
 			break;
 
 		/* Choose goods to contribute */

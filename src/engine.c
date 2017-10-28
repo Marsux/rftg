@@ -12251,11 +12251,15 @@ void phase_discard(game *g)
 	}
 }
 
+typedef struct good_for_defense
 /* Insert a repulse info in the repulse track. In case of equality, inserts on
  * top.
  */
 static void repulse_track_insert(game *g, repulse_info *r)
 {
+	int8_t type;
+	int8_t val;
+} good_for_defense;
 	repulse_info *cur, *prev;
 
 	/* Look for the position where to insert */
@@ -12275,6 +12279,17 @@ static void repulse_track_insert(game *g, repulse_info *r)
 		prev->next = r;
 	}
 
+int cmp_good_for_defense(const void *ptr1, const void *ptr2)
+{
+	good_for_defense *gfd1, *gfd2;
+	gfd1 = (good_for_defense *) ptr1;
+	gfd2 = (good_for_defense *) ptr2;
+
+	if (gfd1->val > gfd2->val) return -1;
+	if (gfd1->val < gfd2->val) return 1;
+	if (gfd1->val == GOOD_ANY) return 1;
+	if (gfd2->val == GOOD_ANY) return -1;
+	return 0;
 	/* Connect r to it predecessor */
 	r->prev = prev;
 
@@ -12289,26 +12304,54 @@ static void repulse_track_insert(game *g, repulse_info *r)
 	}
 }
 
+/* Test whether a selection of powers in special make it possible to defend
+ * a given deficit. Return 1 if it is the case, 0 otherwise.
 /* Move item r before item s in the repulse_track of game g.
  * Assumes r was not at the beginning.
  */
+int defend_invasion_possible(game *g, int who, int deficit, int n,
+                             power_where w_list[], int n_power)
 static void repulse_track_move_before(game *g, repulse_info *r,
                                                repulse_info *s)
 {
+	int i, j;
+	/* Number of power providing X defense */
+	int hand_defense[4];
+	int types[MAX_GOOD];
+	power *o_ptr;
+	int max_def = 0;
+	good_for_defense consume_power[100], *gfd;
+	int n_consume_power = 0;
 	/* Remove r from its previous position */
 	r->prev->next = r->next;
 	if (r->next) r->next->prev = r->prev;
 
+	/* Init hand defense per value of defense provided */
+	for (i = 0; i < 4; i++) hand_defense[i] = 0;
 	/* Update predecessor and successor of r */
 	r->prev = s->prev;
 	r->next = s;
 
+	for (i = 0; i < n_power; i++)
+	{
+		/* Get power pointer */
+		o_ptr = w_list[i].o_ptr;
 	/* Insert r to it new position */
 	if (s->prev == NULL) g->xeno_repulse_track = r;
 	else s->prev->next = r;
 	s->prev = r;
 }
 
+		/* Special powers */
+		if (!o_ptr)
+		{
+			/* Case of bunker */
+			if (w_list[i].c_idx == -1)
+			{
+				/* Note discard from hand for 2 defense */
+				hand_defense[2]++;
+				continue;
+			}
 /* Move item r after item s in the repulse_track of game g.
  * Assumes r was not at the end.
  */
@@ -12319,28 +12362,88 @@ static void repulse_track_move_after(game *g, repulse_info *r,
 	if (r->prev) r->prev->next = r->next;
 	r->next->prev = r->prev;
 
+			/* Ignore power */
+			continue;
+		}
 	/* Update predecessor and successor of r */
 	r->prev = s;
 	r->next = s->next;
 
+		/* Discard from table power */
+		if (o_ptr->code & P3_DISCARD)
+		{
+			/* Take extra-military into account */
+			max_def += o_ptr->value;
+			continue;
+		}
 	/* Insert r to its new position */
 	if (s->next != NULL) s->next->prev = r;
 	s->next = r;
 
+		/* Discard from hand power for military */
+		if (o_ptr->code & P3_MILITARY_HAND)
+		{
+			/* Note discard from hand for 1 defense */
+			hand_defense[1] += o_ptr->times;
+			continue;
+		}
 }
 
+		/* Discard from hand power for defense */
+		if (o_ptr->code & P3_DISCARD_HAND)
+		{
+			/* Note discard from hand for X defense */
+			hand_defense[o_ptr->value] += o_ptr->times;
+			continue;
+		}
 
+		/* Consume any good for defense */
+		if (o_ptr->code & P3_CONSUME_ANY)
+		{
+			/* Note power for a good */
+			gfd = &consume_power[n_consume_power++];
+			gfd->type = GOOD_ANY;
+			gfd->val = o_ptr->value;
+			continue;
+		}
 				/* Take card */
 				move_card(g, j, i, WHERE_HAND);
 
+		/* Consume novelty good for defense */
+		if (o_ptr->code & P3_CONSUME_NOVELTY)
+		{
+			/* Note power for a good */
+			gfd = &consume_power[n_consume_power++];
+			gfd->type = GOOD_NOVELTY;
+			gfd->val = o_ptr->value;
+			continue;
+		}
 				/* Adjust known flags */
 				c_ptr->misc &= ~MISC_KNOWN_MASK;
 				c_ptr->misc |= (1 << i);
 
+		/* Consume rare good for defense */
+		if (o_ptr->code & P3_CONSUME_RARE)
+		{
+			/* Note power for a good */
+			gfd = &consume_power[n_consume_power++];
+			gfd->type = GOOD_RARE;
+			gfd->val = o_ptr->value;
+			continue;
+		}
 				/* Count cards taken */
 				taken++;
 			}
 
+		/* Consume gene good for defense */
+		if (o_ptr->code & P3_CONSUME_GENE)
+		{
+			/* Note power for a good */
+			gfd = &consume_power[n_consume_power++];
+			gfd->type = GOOD_GENE;
+			gfd->val = o_ptr->value;
+			continue;
+		}
 			/* Check for cards taken */
 			if (taken > 0)
 			{
@@ -12351,6 +12454,14 @@ static void repulse_track_move_after(game *g, repulse_info *r,
 					sprintf(msg, "%s takes %d discard%s.\n",
 					        g->p[i].name, taken, PLURAL(taken));
 
+		/* Consume alien good for defense */
+		if (o_ptr->code & P3_CONSUME_ALIEN)
+		{
+			/* Note power for a good */
+			gfd = &consume_power[n_consume_power++];
+			gfd->type = GOOD_ALIEN;
+			gfd->val = o_ptr->value;
+			continue;
 					/* Send message */
 					message_add(g, msg);
 				}
@@ -12376,19 +12487,42 @@ void phase_invasion(game *g)
 	int card_idx[MAX_PLAYER];
 	char msg[1024];
 
+	/* Determine the maximum amount of defense available through hand discard
+	 * Assumes that discarding one card is enough to activate a defense power,
+	 * and that the defense gain is between 1 and 3.
+	 */
+	for (i = 3; n > 0 && i > 0; i--)
 	/* Check for no invasion phase */
 	if (g->round < 3)
 	{
+		/* As long as one can discard a card for i defense */
+		while (n > 0 && hand_defense[i] > 0)
+		{
+			/* Increase maximum defense available */
+			max_def += i;
 		/* Remove a card from the Wave 0 deck */
 		g->xeno_n_invasion_card[0]--;
 
+			/* Note used power */
+			hand_defense[i]--;
 		/* Increment wave if necessary */
 		if (g->round == 2) g->xeno_wave++;
 
+			/* Note used card */
+			n--;
+		}
 		/* Do not perform any other action in the phase */
 		return;
 	}
 
+	/* Determine the maximum amount of defense available through good
+	 * consumption. Assumes that there are no GOOD_ANY good, and that the
+	 * defense provided by a specific type consume power is greater than the
+	 * defense provided by an any type consume power, except for type NOVELTY.
+	 * This is verified by the cards present in XI, and make it possible to
+	 * determine max_def by a gready algorithm.
+	 */
+	if (n_consume_power)
 	/* Check for first invasion phase */
 	if (g->round == 3)
 	{
@@ -12396,19 +12530,48 @@ void phase_invasion(game *g)
 	}
 	else
 	{
+		/* Determine the number of goods available */
+		count_all_goods(g, who, types);
 		/* Update the repulse track */
 	}
 
+		/* Sort the consume power */
+		qsort(consume_power, n_consume_power, sizeof(good_for_defense),
+		      &cmp_good_for_defense);
 	/* Check for end of game by repulsion of Xeno */
 
+		/* Try to use consume power */
+		for (i = 0; i < n_consume_power; i++)
+		{
+			/* Get consume power pointer */
+			gfd = &consume_power[i];
 	/* Draw Xeno invasion cards */
 	for (i = 0; i < g->num_players; i++) card_idx[i] = random_invasion_draw(g);
 
+			/* Case of specific good type */
+			if (gfd->type != GOOD_ANY && types[gfd->type] > 0)
+			{
+				/* Increase defense */
+				max_def += gfd->val;
 	/* Sort the cards by value, assumes they are inserted in increasing order
 	 * in the deck
 	 */
 	qsort(card_idx, g->num_players, sizeof(int), cmp_int);
 
+				/* Consume good */
+				types[gfd->type]--;
+			}
+			/* Case of any type */
+			else if (gfd->type == GOOD_ANY)
+			{
+				/* Look for a good type to consume */
+				for (j = GOOD_ALIEN; j >= GOOD_NOVELTY; j--)
+				{
+					/* If found */
+					if (types[j] > 0)
+					{
+						/* Increase defense */
+						max_def += gfd->val;
 	/* Attribute cards to players according to their position on the track */
 	for (i = 0; i < g->num_players; i++)
 	{
@@ -12418,15 +12581,651 @@ void phase_invasion(game *g)
 			/* Prepare message */
 			sprintf(msg, "%s drawn\n", g->xeno_deck[card_idx[i]].d_ptr->name);
 
+						/* Consume good */
+						types[j]--;
 			/* Send message */
 			message_add(g, msg);
 		}
 
+						/* Stop looking */
+						break;
+					}
+				}
+			}
+		}
 		/* Move card to discard */
 		move_card(g, card_idx[i], -1, WHERE_XENO_DISCARD, 1);
 	}
 
+	/* Determine whether defense is possible */
+	return max_def > deficit ? 1 : 0;
+}
+
 	/* Get players defense decisions */
+/*
+ * Called when player has chosen a method of defense against invasion.
+ * Let player choose its defense against Xeno.
+ *
+ * We return:
+ *   0 if the method is illegal
+ *   1 if the method is legal but insufficient to protect against invasion
+ *   2 if the method is legal and protects against the invasion
+ *   0 if the defense fails
+ *   1 if the method enables to defeat the invasion
+ */
+int defend_invasion_callback(game *g, int who, int deficit, int list[], int num,
+                             int special[], int num_special, int test_only)
+int defend_invasion_player(game *g, int who, int wave_strength)
+{
+	player *p_ptr;
+	card *c_ptr;
+	power_where w_list[100], *w_ptr;
+	int i, n_power = 0;
+	int list[MAX_DECK], special[MAX_DECK];
+	int types[MAX_GOOD];
+	int n_cards, n, num_special = 0;
+	power *o_ptr;
+	int defense = 0, hand_defense = 0, cards_needed = 0, cards_used;
+	int g_list[MAX_GOOD][MAX_DECK], num_list[MAX_GOOD];
+	int n_list[MAX_GOOD], goods_needed[MAX_GOOD];
+	int consume_special[2], num_consume_special;
+	int n_any = 0, needs_good = 0;
+	int i, j, bunker_used = 0;
+	char msg[1024];
+
+	/* Init goods needed */
+	for (i = 0; i < MAX_GOOD; i++) goods_needed[i] = 0;
+    int defense = 0, deficit;
+	int xeno_strength;
+
+	/* Get player pointer */
+	p_ptr = &g->p[who];
+
+	/* Loop over special cards used */
+	for (i = 0; i < num_special; i++)
+	{
+		/* Special case: bunker */
+		if (special[i] == -1)
+		{
+			/* Only use bunker once by phase */
+			if (bunker_used) continue;
+
+			/* Mark power as used */
+			bunker_used = 1;
+
+			/* Add extra defense */
+			defense += 2;
+
+			/* Track number of needed discard */
+			cards_needed++;
+
+			/* Message */
+			if (!g->simulation)
+			{
+				/* Format message */
+				sprintf(msg, "%s discards from hand for "
+						"2 extra defense from bunker.\n", p_ptr->name);
+
+				/* Send message */
+				message_add(g, msg);
+			}
+
+			/* Go to next power */
+			continue;
+		}
+
+		/* Get card pointer */
+		c_ptr = &g->deck[special[i]];
+
+		/* Loop over card's powers */
+		for (j = 0; j < c_ptr->d_ptr->num_power; j++)
+		{
+			/* Get power pointer */
+			o_ptr = &c_ptr->d_ptr->powers[j];
+
+			/* Skip non-Settle power */
+			if (o_ptr->phase != PHASE_SETTLE) continue;
+
+			/* Skip already used powers */
+			if (c_ptr->misc & (1 << (MISC_USED_SHIFT +j))) continue;
+
+			/* Check for discard for extra defense */
+			if (o_ptr->code == (P3_DISCARD | P3_EXTRA_MILITARY))
+			{
+				/* Discard card */
+				move_card(g, special[i], -1, WHERE_DISCARD);
+
+				/* Message */
+				if (!g->simulation)
+				{
+					/* Format message */
+					sprintf(msg, "%s discards %s for extra defense.\n",
+					        p_ptr->name,
+					        c_ptr->d_ptr->name);
+
+					/* Send message */
+					message_add(g, msg);
+				}
+
+				/* Add extra defense */
+				defense += o_ptr->value;
+			}
+
+			/* Check for hand cards for defense */
+			if (o_ptr->code & P3_MILITARY_HAND)
+			{
+				/* Mark power as used */
+				c_ptr->misc |= 1 << (MISC_USED_SHIFT + j);
+
+				/* Assume cards are for defense strength */
+				hand_defense += o_ptr->value;
+			}
+
+			/* Check for discard from hand for defense */
+			if (o_ptr->code & P3_DISCARD_HAND)
+			{
+				/* Mark power as used */
+				c_ptr->misc |= 1 << (MISC_USED_SHIFT + j);
+
+				/* Add extra defense */
+				defense += o_ptr->value;
+
+				/* Track number of needed discard */
+				cards_needed++;
+
+				/* Message */
+				if (!g->simulation)
+				{
+					/* Format message */
+					sprintf(msg, "%s discards from hand for %d extra defense "
+					        "from %s.\n", p_ptr->name, o_ptr->value,
+					        c_ptr->d_ptr->name);
+
+					/* Send message */
+					message_add(g, msg);
+				}
+			}
+
+			/* Check for consume novelty to increase defense */
+			if (o_ptr->code & P3_CONSUME_NOVELTY)
+			{
+				/* Mark power as used */
+				c_ptr->misc |= 1 << (MISC_USED_SHIFT + j);
+
+				/* Add extra defense */
+				defense += o_ptr->value;
+
+				/* Message */
+				if (!g->simulation)
+				{
+					/* Format message */
+					sprintf(msg, "%s discards a Novelty good for "
+					        "extra defense.\n", p_ptr->name);
+
+					/* Send message */
+					message_add(g, msg);
+				}
+
+				/* Increase number of goods needed */
+				goods_needed[GOOD_NOVELTY]++;
+
+				/* Remember goods are needed */
+				needs_good = 1;
+			}
+
+			/* Check for consume rare to increase defense */
+			if (o_ptr->code & P3_CONSUME_RARE)
+			{
+				/* Mark power as used */
+				c_ptr->misc |= 1 << (MISC_USED_SHIFT + j);
+
+				/* Add extra defense */
+				defense += o_ptr->value;
+
+				/* Message */
+				if (!g->simulation)
+				{
+					/* Format message */
+					sprintf(msg, "%s discards a Rare good for "
+					        "extra defense.\n", p_ptr->name);
+
+					/* Send message */
+					message_add(g, msg);
+				}
+
+				/* Increase number of goods needed */
+				goods_needed[GOOD_RARE]++;
+
+				/* Remember goods are needed */
+				needs_good = 1;
+			}
+
+			/* Check for consume gene to increase defense */
+			if (o_ptr->code & P3_CONSUME_GENE)
+			{
+				/* Mark power as used */
+				c_ptr->misc |= 1 << (MISC_USED_SHIFT + j);
+
+				/* Add extra defense */
+				defense += o_ptr->value;
+
+				/* Message */
+				if (!g->simulation)
+				{
+					/* Format message */
+					sprintf(msg, "%s discards a Gene good for "
+					        "extra defense.\n", p_ptr->name);
+
+					/* Send message */
+					message_add(g, msg);
+				}
+
+				/* Increase number of goods needed */
+				goods_needed[GOOD_GENE]++;
+
+				/* Remember goods are needed */
+				needs_good = 1;
+			}
+
+			/* Check for consume alien to increase defense */
+			if (o_ptr->code & P3_CONSUME_ALIEN)
+			{
+				/* Mark power as used */
+				c_ptr->misc |= 1 << (MISC_USED_SHIFT + j);
+
+				/* Add extra defense */
+				defense += o_ptr->value;
+
+				/* Message */
+				if (!g->simulation)
+				{
+					/* Format message */
+					sprintf(msg, "%s discards an Alien good for "
+					        "extra defense.\n", p_ptr->name);
+
+					/* Send message */
+					message_add(g, msg);
+				}
+
+				/* Increase number of goods needed */
+				goods_needed[GOOD_ALIEN]++;
+
+				/* Remember goods are needed */
+				needs_good = 1;
+			}
+
+			/* Check for consume any to increase defense */
+			if (o_ptr->code & P3_CONSUME_ANY)
+			{
+				/* Mark power as used */
+				c_ptr->misc |= 1 << (MISC_USED_SHIFT + j);
+
+				/* Add extra defense */
+				defense += o_ptr->value;
+
+				/* Message */
+				if (!g->simulation)
+				{
+					/* Format message */
+					sprintf(msg, "%s discards a good for "
+					        "extra defense.\n", p_ptr->name);
+
+					/* Send message */
+					message_add(g, msg);
+				}
+
+				/* Increase number of goods needed */
+				goods_needed[GOOD_ANY]++;
+
+				/* Remember goods are needed */
+				needs_good = 1;
+			}
+		}
+	}
+
+	/* Check regarding hand cards */
+	/* Cards used as military hand */
+	cards_used = num - cards_needed;
+
+	/* Check for too many cards passed */
+	if (cards_used < 0 || cards_used > hand_defense) return 0;
+
+	/* Check legality regarding goods */
+	if (needs_good) {
+		/* Get all goods list */
+		get_all_goods(g, who, g_list, num_list, n_list);
+
+		/* Check specific goods requirement, assumes no type ANY world */
+		for (i = GOOD_NOVELTY; i <= GOOD_ALIEN; i++)
+		{
+			/* Check there are enough goods of specific type */
+			if (goods_needed[i] > num_list[i]) return 0;
+
+			/* Count the number of goods available as any good */
+			n_any += num_list[i] - goods_needed[i];
+		}
+
+		/* Check any good */
+		if (goods_needed[GOOD_ANY] > n_any) return 0;
+	}
+
+	/* If the caller is only concerned by legality, return */
+	if (test_only) return 1;
+
+	/* The choice of powers is legal, start applying changes */
+	/* Use cards passed as military strength */
+	defense += cards_used;
+
+	/* Message */
+	if (!g->simulation && cards_used > 0)
+	{
+		//TODO indicate which cards were discarded through private_message?
+		/* Private message */
+		//if (g->p[who].control->private_message)
+		//{
+		//	/* Loop over choices */
+		//	for (i = 0; i < num; i++)
+		//	{
+		//		/* Format message */
+		//		sprintf(msg, "%s discards %s.\n", p_ptr->name,
+		//		        g->deck[list[i]].d_ptr->name);
+
+		//		/* Send message */
+		//		g->p[who].control->private_message(g, who, msg, FORMAT_DISCARD);
+		//	}
+		//}
+
+		/* Format message */
+		sprintf(msg, "%s discards %d from hand for extra defense.\n",
+		        p_ptr->name, cards_used);
+
+		/* Send message */
+		message_add(g, msg);
+	}
+
+	/* Check for simulation */
+	if (g->simulation)
+	{
+		/* Simulate payment */
+		p_ptr->fake_discards += num;
+	}
+	else
+	{
+		/* Discard cards given */
+		for (i = 0; i < num; i++)
+		{
+			/* Discard card */
+			move_card(g, list[i], -1, WHERE_DISCARD);
+		}
+	}
+
+	/* Prepare ask_player arguments */
+	/* Consume cards of a given type */
+	consume_special[0] = -1;
+
+	/* Set number of argument in the special list */
+	num_consume_special = 2;
+
+	/* Loop over good types */
+	for (i = GOOD_NOVELTY; i <= GOOD_ALIEN; i++)
+	{
+		/* Skip good types not needed */
+		if (!goods_needed[i]) continue;
+
+		/* Check a choice is available */
+		if (num_list[i] != goods_needed[i])
+		{
+			/* Set type to consume */
+			consume_special[1] = i;
+
+			/* Ask player to choose good to discard */
+			ask_player(g, who, CHOICE_GOOD, g_list[i], &n_list[i],
+					   consume_special, &num_consume_special,
+					   goods_needed[i], goods_needed[i], 0);
+
+			/* Check for aborted game */
+			if (g->game_over) return 0;
+		}
+
+		/* Discard chosen good */
+		if (!good_chosen(g, who, -1, i, goods_needed[i], goods_needed[i],
+		    g_list[i], n_list[i]))
+		{
+			/* If the chosen goods are illegal, fail to defend */
+			// TODO This should not happen, how should we fail?
+			display_error("Illegal good choice!\n");
+			exit(1);
+		}
+	}
+
+	/* Check for consume any power */
+	if (goods_needed[GOOD_ANY])
+	{
+		/* Get the list of goods consumable */
+		get_all_goods(g, who, g_list, num_list, n_list);
+
+		/* Check a choice is available and needed */
+		if (num_list[0] != goods_needed[GOOD_ANY])
+		{
+			/* Set type to consume */
+			consume_special[1] = GOOD_ANY;
+
+			/* Ask player to choose good to discard */
+			ask_player(g, who, CHOICE_GOOD, g_list[0], &n_list[0],
+					   consume_special, &num_consume_special,
+					   goods_needed[GOOD_ANY], goods_needed[GOOD_ANY], 0);
+
+			/* Check for aborted game */
+			if (g->game_over) return 0;
+		}
+
+		/* Discard chosen good */
+		if (!good_chosen(g, who, -1, GOOD_ANY, goods_needed[GOOD_ANY],
+		    goods_needed[GOOD_ANY], g_list[0], n_list[0]))
+		{
+			/* If the chosen goods are illegal, fail to defend */
+			// TODO This should not happen, how should we fail?
+			display_error("Illegal good choice!\n");
+			exit(1);
+		}
+	}
+
+	/* Check for sufficient strength */
+	if (defense > deficit) return 2;
+
+	/* Legal but insufficient */
+	return 1;
+}
+
+/*
+ * Let player choose its defense against Xeno.
+ *
+ * We return:
+ *   0 if the defense fails
+ *   1 if the method enables to defeat the invasion
+ */
+int defend_invasion_player(game *g, int who, int wave_strength)
+{
+	player *p_ptr;
+	power_where w_list[100], *w_ptr;
+	int i, n_power = 0;
+	int list[MAX_DECK], special[MAX_DECK];
+	int types[MAX_GOOD];
+	int n_cards, n, num_special = 0;
+	power *o_ptr;
+    int defense = 0, deficit;
+	int xeno_strength;
+
+	/* Get player pointer */
+	p_ptr = &g->p[who];
+
+	/* Set turn */
+	g->turn = who;
+
+	/* Get military power against xeno */
+	xeno_strength = g->xeno_repulse_stack[who].xeno_strength;
+
+	/* Determine the number of goods available */
+	count_all_goods(g, who, types);
+
+	/* Get cards in hand */
+	n_cards = get_player_area(g, who, list, WHERE_HAND);
+
+	/* Add fake cards to list */
+	for (i = 0; i < p_ptr->fake_hand - p_ptr->fake_discards; i++)
+	{
+		/* Add a fake card to list */
+		list[n_cards++] = -1;
+	}
+
+	/* Check for more fake discards than drawn */
+	if (p_ptr->fake_discards > p_ptr->fake_hand)
+	{
+		/* Remove cards from list */
+		n_cards -= p_ptr->fake_discards - p_ptr->fake_hand;
+	}
+
+	/* Go through power, collect defense powers, bonus mili, bonus defense */
+	/* Get settle powers */
+	n = get_powers(g, who, PHASE_SETTLE, w_list);
+
+	/* Loop over powers */
+	for (i = 0; i < n; i++)
+	{
+		/* Get power location pointer */
+		w_ptr = &w_list[i];
+
+		/* Get power pointer */
+		o_ptr = w_ptr->o_ptr;
+
+		/* Check for defense against Xeno */
+		if (o_ptr->code & P3_XENO_DEFENSE)
+		{
+			/* Check for costless power */
+			if (o_ptr->code == P3_XENO_DEFENSE)
+			{
+				/* Increase defense */
+				defense += o_ptr->value;
+
+				/* Go to next power */
+				continue;
+			}
+
+			/* If no good available and consume required skip power */
+			if ((o_ptr->code & P3_CONSUME_ANY && types[GOOD_ALL] == 0) ||
+			    (o_ptr->code & P3_CONSUME_GENE && types[GOOD_GENE] == 0) ||
+			    (o_ptr->code & P3_CONSUME_ALIEN && types[GOOD_ALIEN] == 0) ||
+			    (o_ptr->code & P3_CONSUME_NOVELTY && types[GOOD_NOVELTY] == 0))
+			{
+				continue;
+			}
+
+			/* If no card available and card required skip power */
+			if (o_ptr->code & P3_DISCARD_HAND && n <= 0) continue;
+
+			/* Add to special list */
+			special[num_special++] = w_list[i].c_idx;
+
+			/* Save power */
+			w_list[n_power++] = w_list[i];
+			continue;
+		}
+
+		/* Optional extra military, we only consider powers present in XI */
+		/* Check for discard from hand for military */
+		if (o_ptr->code == P3_MILITARY_HAND && n_cards > 0)
+		{
+			/* Add to special list */
+			special[num_special++] = w_list[i].c_idx;
+
+			/* Save power */
+			w_list[n_power++] = w_list[i];
+			continue;
+		}
+
+		/* Check for discard from table for military */
+		if (o_ptr->code == (P3_EXTRA_MILITARY | P3_DISCARD))
+		{
+			/* Add to special list */
+			special[num_special++] = w_list[i].c_idx;
+
+			/* Save power */
+			w_list[n_power++] = w_list[i];
+			continue;
+		}
+
+		/* Check for consume novelty for military */
+		if (o_ptr->code == (P3_EXTRA_MILITARY | P3_CONSUME_NOVELTY) &&
+		    types[GOOD_NOVELTY] > 0)
+		{
+			/* Add to special list */
+			special[num_special++] = w_list[i].c_idx;
+
+			/* Save power */
+			w_list[n_power++] = w_list[i];
+			continue;
+		}
+
+		/* Check for consume rare for military */
+		if (o_ptr->code == (P3_EXTRA_MILITARY | P3_CONSUME_RARE) &&
+		    types[GOOD_RARE] > 0)
+		{
+			/* Add to special list */
+			special[num_special++] = w_list[i].c_idx;
+
+			/* Save power */
+			w_list[n_power++] = w_list[i];
+			continue;
+		}
+
+		/* Check for consume alien for military against Xeno*/
+		if (o_ptr->code == (P3_EXTRA_MILITARY | P3_CONSUME_ALIEN | P3_XENO) &&
+		    types[GOOD_ALIEN] > 0)
+		{
+			/* Add to special list */
+			special[num_special++] = w_list[i].c_idx;
+
+			/* Save power */
+			w_list[n_power++] = w_list[i];
+			continue;
+		}
+	}
+
+	/* Add special power for bunker */
+	if (n_cards > 0)
+	{
+		w_list[n_power].c_idx = -1;
+		w_list[n_power].o_idx = 0;
+		w_list[n_power++].o_ptr = NULL;
+
+		/* Add bunker to special list */
+		special[num_special++] = -1;
+	}
+
+	/* Compute deficit */
+	deficit = wave_strength - xeno_strength - defense;
+
+	/* Check for automatic defense */
+	if (deficit < 0) return 1;
+
+	/* Check for impossible defense */
+	if (!defend_invasion_possible(g, who, deficit, n_cards, w_list, n_power))
+	{
+		return 0;
+	}
+
+	/* Have player decide how to defend against invasion */
+	ask_player(g, who, CHOICE_XENO_DEFEND, list, &n_cards,
+	           special, &num_special, deficit, -1, -1);
+
+	/* Check for aborted game */
+	if (g->game_over) return 0;
+
+	/* Apply Choice */
+	//TODO what do we have to return in case of illegal defense?
+	return defend_invasion_callback(g, who, deficit, list, n_cards,
+	                                special, num_special, 0) == 2 ? 1 : 0;
+}
 
 	/* Attribute rewards */
 /* int comparison function */
@@ -12667,6 +13466,44 @@ void phase_invasion(game *g)
 	/* Loop over players */
 	for (i = 0; i < g->num_players; i++)
 	{
+		/* Perform defense actions */
+		rc = defend_invasion_player(g, i, wave_power[i]);
+
+		/* Check for aborted game */
+		if (g->game_over) return;
+
+		/* Check for successful defense */
+		if (rc == 1)
+		{
+			/* Get player pointer */
+			p_ptr = &g->p[i];
+
+			/* Get one point reward position limit */
+			limit = xeno_reward_one_limit[g->num_players];
+
+			/* Get amount of reward */
+			reward = g->xeno_repulse_stack[i].pos < limit ? 1 : 2;
+
+			/* Attribute rewards */
+			p_ptr->reward_vp += reward;
+
+			/* Message */
+			if (!g->simulation)
+			{
+				/* Prepare message */
+				sprintf(msg, "%s gets %d-point reward for defeating invasion\n",
+				             p_ptr->name, reward);
+
+				/* Send message */
+				message_add(g, msg);
+			}
+
+			/* Score the success */
+			win++;
+		}
+		/* Failure to defend against invasion */
+		else {
+		}
 	}
 
 	/* Check for empire defeat */
