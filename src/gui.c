@@ -170,6 +170,19 @@ static char *player_colors[MAX_PLAYER] =
 };
 
 /*
+ * Player color int.
+ */
+static int player_colors_int[MAX_PLAYER] =
+{
+	0x0000ff,
+	0xff0000,
+	0x00ff00,
+	0xffff00,
+	0x00ffff,
+	0xff00ff,
+};
+
+/*
  * Card image size.
  */
 #define CARD_WIDTH 372

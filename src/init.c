@@ -1226,6 +1226,9 @@ void init_game(game *g)
 		/* Get player pointer */
 		p_ptr = &g->p[i];
 
+		/* Attribute player color */
+		p_ptr->color = i;
+
 		/* Clear all claimed goals */
 		for (j = 0; j < MAX_GOAL; j++)
 		{
