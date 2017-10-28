@@ -4341,7 +4341,7 @@ static char *card_takeover_tooltip(game *g, int defender, int attacker,
 						if (d_ptr->powers[k].code & P3_DISCARD)
 						{
 							/* Discard card */
-							move_card(&sim, card, -1, WHERE_DISCARD, 0);
+							move_card(&sim, card, -1, WHERE_DISCARD);
 						}
 
 						break;

@@ -150,7 +150,7 @@ extern const xeno_wave_info_t xeno_wave_info[4];
 /*
  * Number of card locations.
  */
-#define MAX_WHERE 10
+#define MAX_WHERE 8
 
 /*
  * Expansions
@@ -269,8 +269,6 @@ extern int exp_max_player[MAX_EXPANSION];
 #define WHERE_SAVED    5
 #define WHERE_ASIDE    6
 #define WHERE_CAMPAIGN 7
-#define WHERE_XENO_DECK    8
-#define WHERE_XENO_DISCARD 9
 /*
  * Misc card flags.
  */
@@ -1227,7 +1225,7 @@ extern int player_has(game *g, int who, design *d_ptr);
 extern int player_chose(game *g, int who, int act);
 extern int prestige_on_tile(game *g, int who);
 extern int first_draw(game *g);
-extern void move_card(game *g, int which, int who, int where, int xeno);
+extern void move_card(game *g, int which, int who, int where);
 extern void move_start(game *g, int which, int who, int where);
 extern int draw_card(game *g, int who, char *reason);
 extern void draw_cards(game *g, int who, int num, char *reason);

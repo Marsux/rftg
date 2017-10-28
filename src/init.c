@@ -992,7 +992,7 @@ static void init_campaign(game *g)
 					continue;
 
 				/* Move card to campaign location */
-				move_card(g, k, i, WHERE_CAMPAIGN, 0);
+				move_card(g, k, i, WHERE_CAMPAIGN);
 
 				/* Save index */
 				g->camp_status->index[i][j] = k;
@@ -1180,7 +1180,7 @@ void init_game(game *g)
 				c_ptr = &g->xeno_deck[g->xeno_deck_size++];
 
 				/* Put location in draw deck */
-				c_ptr->start_where = c_ptr->where = WHERE_XENO_DECK;
+				c_ptr->start_where = c_ptr->where = WHERE_DECK;
 			}
 			/* Case of worlds and developments */
 			else

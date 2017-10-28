@@ -289,7 +289,7 @@ static void ai_quick_discard(game *g, int who, int amt)
 		}
 
 		/* Discard */
-		move_card(g, x, -1, WHERE_DISCARD, 0);
+		move_card(g, x, -1, WHERE_DISCARD);
 
 		/* Count cards discarded */
 		n++;
@@ -3226,11 +3226,11 @@ static int claim_card(game *g, int who, int which)
 		}
 
 		/* Replace claimed card */
-		move_card(g, replace, c_ptr->owner, c_ptr->where, 0);
+		move_card(g, replace, c_ptr->owner, c_ptr->where);
 	}
 
 	/* Put card in hand */
-	move_card(g, which, who, WHERE_HAND, 0);
+	move_card(g, which, who, WHERE_HAND);
 
 	/* Assume old location was draw deck */
 	move_start(g, which, -1, WHERE_DECK);
@@ -3298,7 +3298,7 @@ static void ai_prepare_discard(game *g, int who)
 		simulate_game(&sim, g, who);
 
 		/* Discard card */
-		move_card(&sim, x, -1, WHERE_DISCARD, 0);
+		move_card(&sim, x, -1, WHERE_DISCARD);
 
 		/* Evaluate game */
 		discard_list[who][n].score = eval_game(&sim, who);
@@ -4669,7 +4669,7 @@ static void ai_choose_save(game *g, int who, int list[], int *num)
 		simulate_game(&sim, g, who);
 
 		/* Save card */
-		move_card(&sim, list[i], who, WHERE_SAVED, 0);
+		move_card(&sim, list[i], who, WHERE_SAVED);
 
 		/* Simulate rest of turn */
 		complete_turn(&sim, COMPLETE_ROUND);
@@ -4748,7 +4748,7 @@ static void ai_choose_discard_prestige(game *g, int who, int list[], int *num)
 		simulate_game(&sim, g, who);
 
 		/* Discard chosen card */
-		move_card(&sim, list[i], -1, WHERE_DISCARD, 0);
+		move_card(&sim, list[i], -1, WHERE_DISCARD);
 
 		/* Gain prestige */
 		gain_prestige(&sim, who, 1, NULL);
@@ -6277,7 +6277,7 @@ static void ai_choose_defend_aux2(game *g, int who, int which, int opponent,
 				c_ptr = &sim.deck[which];
 
 				/* Move card to opponent */
-				move_card(&sim, which, opponent, WHERE_ACTIVE, 0);
+				move_card(&sim, which, opponent, WHERE_ACTIVE);
 
 				/* Check for good on card */
 				if (c_ptr->num_goods)
@@ -6294,8 +6294,7 @@ static void ai_choose_defend_aux2(game *g, int who, int which, int opponent,
 						{
 							/* Move good as well */
 							move_card(&sim, x,
-							          opponent,
-							          WHERE_GOOD, 0);
+							          opponent, WHERE_GOOD);
 						}
 					}
 				}
@@ -6360,7 +6359,7 @@ static void ai_choose_defend_aux2(game *g, int who, int which, int opponent,
 			c_ptr = &sim.deck[which];
 
 			/* Move card to opponent */
-			move_card(&sim, which, opponent, WHERE_ACTIVE, 0);
+			move_card(&sim, which, opponent, WHERE_ACTIVE);
 
 			/* Check for good on card */
 			if (c_ptr->num_goods)
@@ -6376,7 +6375,7 @@ static void ai_choose_defend_aux2(game *g, int who, int which, int opponent,
 					{
 						/* Move good as well */
 						move_card(&sim, x, opponent,
-						          WHERE_GOOD, 0);
+						          WHERE_GOOD);
 					}
 				}
 			}
@@ -7591,7 +7590,7 @@ static int ai_choose_lucky(game *g, int who)
 			simulate_game(&sim, g, who);
 
 			/* Add card to hand */
-			move_card(&sim, j, who, WHERE_HAND, 0);
+			move_card(&sim, j, who, WHERE_HAND);
 
 			/* Add score */
 			score += eval_game(&sim, who) / count;
@@ -7695,7 +7694,7 @@ static int ai_choose_ante(game *g, int who, int list[], int num)
 		simulate_game(&sim, g, who);
 
 		/* Assume we lose the card */
-		move_card(&sim, list[i], -1, WHERE_DISCARD, 0);
+		move_card(&sim, list[i], -1, WHERE_DISCARD);
 
 		/* Start with losing chance */
 		score = chance * eval_game(&sim, who);
@@ -7738,7 +7737,7 @@ static int ai_choose_keep(game *g, int who, int list[], int num)
 		simulate_game(&sim, g, who);
 
 		/* Take card and put it in hand */
-		move_card(&sim, list[i], who, WHERE_HAND, 0);
+		move_card(&sim, list[i], who, WHERE_HAND);
 
 		/* Score game */
 		score = eval_game(&sim, who);
