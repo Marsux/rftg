@@ -614,7 +614,7 @@ extern int exp_max_player[MAX_EXPANSION];
 /*
  * Xeno repulse value per number of players.
  */
-extern int8_t xeno_repulse_value[6];
+extern const int8_t xeno_repulse_value[6];
 
 /*
  * Choice types we can send to players.

@@ -31,6 +31,9 @@ const xeno_wave_info_t xeno_wave_info[4] = {
 	{17, 22, 39}
 };
 
+/* Number of player given 1 point reward for defeating Xeno */
+const int xeno_reward_one_limit[MAX_PLAYER] = {0, 0, 1, 2, 3, 3};
+
 /*
  * Expansion level names.
  */
@@ -139,7 +142,7 @@ char *player_labels[MAX_PLAYER] =
 /*
  * Xeno repulse value per number of players.
  */
-int8_t xeno_repulse_value[6] = {0, 0, 22, 28, 33, 39};
+const int8_t xeno_repulse_value[6] = {0, 0, 22, 28, 33, 39};
 
 /*
  * Textual representation for card locations.
