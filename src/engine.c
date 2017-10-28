@@ -12429,14 +12429,292 @@ void phase_invasion(game *g)
 	/* Get players defense decisions */
 
 	/* Attribute rewards */
+/* int comparison function */
+int cmp_int(const void *a, const void *b)
+{
+	const int *ia = (const int *) a;
+	const int *ib = (const int *) b;
+	return *ib - *ia;
+}
+
+
+/*
+ * Handle the Invasion Phase.
+ */
+void phase_invasion(game *g)
+{
+	int i, win = 0, limit, reward;
+	int card_idx[MAX_PLAYER];
+	int wave_power[MAX_PLAYER];
+	char msg[1024];
+	int rc;
+	repulse_info *r, *s, *next;
+	player *p_ptr;
+	card *c_ptr;
+	power *o_ptr;
+
+	/* Check for no invasion phase */
+	if (g->round < 3)
+	{
+		/* Remove a card from the Wave 0 deck */
+		g->xeno_n_invasion_card[0]--;
+
+		/* Increment wave if necessary */
+		if (g->round == 2) g->xeno_wave++;
+
+		/* Do not perform any other action in the phase */
+		return;
+	}
+
+	/* Check for first invasion phase */
+	if (g->round == 3)
+	{
+		/* Fill the players repulse info */
+		for (i = 0; i < g->num_players; i++)
+		{
+			/* Attribute a repulse_info object to player */
+			r = g->xeno_repulse_stack + i;
+
+			/* Setup the player */
+			r->player = i;
+
+			/* Update military strength */
+			xeno_military(g, r);
+
+			/* Insert in repulse track */
+			repulse_track_insert(g, r);
+		}
+	}
+	else
+	{
+		/* Save previous total military against Xeno */
+		for (r = g->xeno_repulse_track; r != NULL; r = r->next)
+		{
+			r->old_strength = r->xeno_strength;
+
+		}
+
+		/* Update the repulse track by moving the players' token */
+		for (r = g->xeno_repulse_track; r != NULL; r = next)
+		{
+			/* Save next step */
+			next = r->next;
+
+			/* If r has already been moved, go to next item */
+			if (r->xeno_strength != r->old_strength) continue;
+
+			/* Update the military info */
+			xeno_military(g, r);
+
+			/* If r has not changed, go to next item */
+			if (r->xeno_strength == r->old_strength) continue;
+
+			/* Determine new position */
+			if (r->xeno_strength > r->old_strength)
+			{
+				/* When going up, determine position before which to insert.
+				 * We go up as long as we do not reach the beginning of the
+				 * track, the strength of the predecessor is smaller than the
+				 * strength of the item considered, or in case of equal
+				 * strength if they do not come from the same stack.
+				 */
+				for (s = r; s->prev != NULL &&
+				            (s->prev->xeno_strength < s->xeno_strength ||
+					        (s->prev->xeno_strength == s->xeno_strength &&
+					            (s->prev->old_strength != s->old_strength)));
+				            s = s->prev);
+
+				/* Move if a move is required */
+				if (s != r) repulse_track_move_before(g, r, s);
+			}
+			else {
+				/* When going down, determine the repulse info after which to
+				 * insert. We go down as long as we do not reach the end of the
+				 * track, the strength of the successor is higher than the
+				 * strength of the item considered, or in case of equal
+				 * strength if they come from the same stack. To test this we
+				 * first ensure that the successor considered has been
+				 * previously moved, then we check its old_strength value.
+				 */
+				for (s = r; s->next != NULL &&
+				     (s->next->xeno_strength > s->xeno_strength ||
+					 (s->next->xeno_strength == s->xeno_strength &&
+					     (s->next->xeno_strength != s->next->old_strength) &&
+					     (s->next->old_strength == s->old_strength))); s = s->next);
+
+				/* Move if a move is required */
+				if (s != r) repulse_track_move_after(g, r, s);
+			}
+		}
+	}
+
+	/* Compute empire total military against Xeno */
+	for (r = g->xeno_repulse_track, g->empire_military = 0; r != NULL;
+	     r = r->next)
+	{
+		g->empire_military += r->xeno_strength;
+	}
+
+	/* Check for end of game by repulsion of Xeno */
+	if (g->empire_military >= g->xeno_repulse)
+	{
+		/* Message */
+		if (!g->simulation)
+		{
+			/* Send message */
+			message_add(g, "Game ends by empire victory over Xeno\n");
+		}
+
+		g->game_over = 1;
+		return;
+	}
+
+	/* Draw Xeno invasion cards */
+	for (i = 0; i < g->num_players; i++) card_idx[i] = random_invasion_draw(g);
+
+	/* Sort the cards by value, assumes they are inserted in increasing order
+	 * in the deck
+	 */
+	qsort(card_idx, g->num_players, sizeof(int), cmp_int);
+
+	/* Attribute cards to players according to their position on the track */
+	for (i = 0, r = g->xeno_repulse_track; r != NULL; i++, r = r->next)
+	{
+		/* Get player pointer */
+		p_ptr = &g->p[r->player];
+
+		/* Get invasion card pointer */
+		c_ptr = &g->xeno_deck[card_idx[i]];
+
+		/* Get the power describing the wave power. We assume invasion cards
+		 * only have one power. */
+		o_ptr = &c_ptr->d_ptr->powers[0];
+
+		/* Set position of the player in the track */
+		r->pos = i;
+
+		/* Get the power of the wave */
+		wave_power[r->player] = o_ptr->value;
+
+		/* Add player dependent power if necessary */
+		if (o_ptr->code & P3_PLUS_M) wave_power[r->player] += r->strength;
+
+		/* Message */
+		if (!g->simulation)
+		{
+			/* Prepare message */
+			sprintf(msg, "%s gets %s\n", p_ptr->name,
+			             c_ptr->d_ptr->name);
+
+			/* Send message */
+			message_add(g, msg);
+		}
+
+		/* Move card to player */
+		p_ptr->invasion_card_idx = card_idx[i];
+		c_ptr->owner = r->player;
+		c_ptr->where = WHERE_ACTIVE;
+	}
+
+	/* Cycle players having the same xeno_strength */
+	for (r = g->xeno_repulse_track; r != NULL;)
+	{
+		/* Look for the bottom of the current stack */
+		for (s = r;
+		     s->next != NULL && s->next->xeno_strength == r->xeno_strength;
+		     s = s->next);
+
+		/* Check size of stack */
+		if (s != r)
+		{
+			/* Save start of next stack */
+			next = s->next;
+
+			/* Cycle stack */
+			repulse_track_move_before(g, s, r);
+
+			/* Message */
+			if (!g->simulation)
+			{
+				/* Prepare message */
+				sprintf(msg, "%s moves up the repulsion track\n",
+							 g->p[s->player].name);
+
+				/* Send message */
+				message_add(g, msg);
+			}
+
+			/* Continue from next stack */
+			r = next;
+		}
+		else r = s->next;
+	}
+
+	/* Loop over players */
+	for (i = 0; i < g->num_players; i++)
+	{
+		/* Get player pointer */
+		p_ptr = &g->p[i];
+
+		/* Check for prepare function */
+		if (p_ptr->control->prepare_phase)
+		{
+			/* Ask player to prepare answers for invasion phase */
+			p_ptr->control->prepare_phase(g, i, PHASE_INVASION, wave_power[i]);
+		}
+	}
+
+	/* Loop over players */
+	for (i = 0; i < g->num_players; i++)
+	{
+	}
 
 	/* Check for empire defeat */
+	if (win == 0)
+	{
+		/* Increment number of empire defeat */
+		g->xeno_n_defeat++;
+
+		/* Check for Xeno victory */
+		if (g->xeno_n_defeat == 2)
+		{
+			/* Mark game as over */
+			g->game_over = 1;
+
+			/* Message */
+			if (!g->simulation)
+			{
+				/* Send message */
+				message_add(g, "Game ends by empire defeat\n");
+			}
+		}
+	}
+
+	/* Discard invasion cards */
+	for (i = 0; i < g->num_players; i++)
+	{
+		/* Get player pointer */
+		p_ptr = &g->p[i];
+
+		/* Get invasion card pointer */
+		c_ptr = &g->xeno_deck[p_ptr->invasion_card_idx];
+
+		/* Move invasion card to disard */
+		p_ptr->invasion_card_idx = -1;
+		c_ptr->owner = -1;
+		c_ptr->where = WHERE_DISCARD;
+	}
+
 
 	/* Increment wave */
-	if (g->xeno_wave < 3 && g->xeno_n_invasion_card[g->xeno_wave] == 0)
+	if (g->xeno_wave < 3 && g->game_over != 1 &&
+	    g->xeno_n_invasion_card[g->xeno_wave] == 0)
 	{
 		g->xeno_wave++;
 	}
+
+	/* Clear any temp flags on cards */
+	clear_temp(g);
 }
 
 /*

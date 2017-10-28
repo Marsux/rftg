@@ -1443,6 +1443,11 @@ static void handle_prepare(char *ptr, int size)
 			/* Perform produce phase for ourself */
 			produce_player(&sim, player_us);
 			break;
+
+		/* Invasion */
+		case PHASE_INVASION:
+			defend_invasion_player(&sim, player_us, arg);
+			break;
 	}
 
 	/* Show preparation results */

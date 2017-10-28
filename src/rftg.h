@@ -178,13 +178,14 @@ extern int exp_max_player[MAX_EXPANSION];
 /*
  * Round phases.
  */
-#define PHASE_ACTION   0
-#define PHASE_EXPLORE  1
-#define PHASE_DEVELOP  2
-#define PHASE_SETTLE   3
-#define PHASE_CONSUME  4
-#define PHASE_PRODUCE  5
-#define PHASE_DISCARD  6
+#define PHASE_ACTION    0
+#define PHASE_EXPLORE   1
+#define PHASE_DEVELOP   2
+#define PHASE_SETTLE    3
+#define PHASE_CONSUME   4
+#define PHASE_PRODUCE   5
+#define PHASE_DISCARD   6
+#define PHASE_INVASION  7
 
 /*
  * Player action choices.
@@ -890,6 +891,9 @@ typedef struct player
 
 	/* Player's first card of each location as of the start of the phase */
 	int16_t start_head[MAX_WHERE];
+
+	/* Xeno invasion card attributed to player */
+	int16_t invasion_card_idx;
 
 	/* Card chosen in Develop or Settle phase */
 	int16_t placing;

@@ -1260,6 +1260,9 @@ void init_game(game *g)
 			p_ptr->start_head[j] = -1;
 		}
 
+		/* Clear invasion card */
+		p_ptr->invasion_card_idx = -1;
+
 		/* Player has no bonus military accrued */
 		p_ptr->bonus_military = 0;
 
