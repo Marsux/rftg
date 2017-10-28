@@ -11968,6 +11968,9 @@ void produce_player(game *g, int who)
 
 			/* Track contribution */
 			g->p[who].contrib_vp += n_list[0];
+
+			/* Decrease Xeno repulse value */
+			g->xeno_repulse -= n_list[0];
 		}
 	}
 
