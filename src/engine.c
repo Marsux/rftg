@@ -12303,22 +12303,10 @@ int defend_invasion_possible(game *g, int who, int deficit, int n,
 				hand_defense[2]++;
 				continue;
 			}
-/* Move item r after item s in the repulse_track of game g.
- * Assumes r was not at the end.
- */
-static void repulse_track_move_after(game *g, repulse_info *r,
-                                              repulse_info *s)
-{
-	/* Remove r from its previous position */
-	if (r->prev) r->prev->next = r->next;
-	r->next->prev = r->prev;
 
 			/* Ignore power */
 			continue;
 		}
-	/* Update predecessor and successor of r */
-	r->prev = s;
-	r->next = s->next;
 
 		/* Discard from table power */
 		if (o_ptr->code & P3_DISCARD)
@@ -12327,9 +12315,6 @@ static void repulse_track_move_after(game *g, repulse_info *r,
 			max_def += o_ptr->value;
 			continue;
 		}
-	/* Insert r to its new position */
-	if (s->next != NULL) s->next->prev = r;
-	s->next = r;
 
 		/* Discard from hand power for military */
 		if (o_ptr->code & P3_MILITARY_HAND)
@@ -12338,7 +12323,6 @@ static void repulse_track_move_after(game *g, repulse_info *r,
 			hand_defense[1] += o_ptr->times;
 			continue;
 		}
-}
 
 		/* Discard from hand power for defense */
 		if (o_ptr->code & P3_DISCARD_HAND)
@@ -13245,6 +13229,25 @@ static void repulse_track_move_before(game *g, repulse_info *r,
 	s->prev = r;
 }
 
+/* Move item r after item s in the repulse_track of game g.
+ * Assumes r was not at the end.
+ */
+static void repulse_track_move_after(game *g, repulse_info *r,
+                                              repulse_info *s)
+{
+	/* Remove r from its previous position */
+	if (r->prev) r->prev->next = r->next;
+	r->next->prev = r->prev;
+
+	/* Update predecessor and successor of r */
+	r->prev = s;
+	r->next = s->next;
+
+	/* Insert r to its new position */
+	if (s->next != NULL) s->next->prev = r;
+	s->next = r;
+
+}
 
 static void damage_chosen(game *g, int who, int which)
 {
