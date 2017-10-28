@@ -1286,6 +1286,7 @@ void init_game(game *g)
 
 		/* Player has no points */
 		p_ptr->vp = p_ptr->goal_vp = p_ptr->end_vp = 0;
+		p_ptr->contrib_vp = p_ptr->reward_vp = 0;
 
 		/* Player is not the winner */
 		p_ptr->winner = 0;

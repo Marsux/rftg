@@ -8982,6 +8982,29 @@ int goods_legal(game *g, int who, int c_idx, int o_idx, int min, int max,
 	/* Check for too many */
 	if (num > max) return 0;
 
+	/* Special case: consume goods of a given type */
+	if (c_idx == -1)
+	{
+		/* Get good type */
+		good_type = o_idx;
+
+		/* If no specific type, choice is legal */
+		if (good_type == GOOD_ANY) return 1;
+
+		/* Loop over chosen goods */
+		for (i = 0; i < num; i++)
+		{
+			/* Get card pointer */
+			c_ptr = &g->deck[g_list[i]];
+
+			/* Check the good type matches the constraint */
+			if (c_ptr->d_ptr->good_type != good_type) return 0;
+		}
+
+		/* Choice is legal */
+		return 1;
+	}
+
 	/* Get pointer to card holding power used */
 	c_ptr = &g->deck[c_idx];
 
@@ -9160,25 +9183,38 @@ int good_chosen(game *g, int who, int c_idx, int o_idx,
 	card *c_ptr;
 	power *o_ptr;
 	char *name;
-	int i, num_saved = num, goods_left;
+	int i, num_saved = num, goods_left, n;
 	int times, vp_mult, vps, cards, prestige;
 	char msg[1024];
-
-	/* Get player pointer */
-	p_ptr = &g->p[who];
-
-	/* Get pointer to card holding power used */
-	c_ptr = &g->deck[c_idx];
-
-	/* Get power pointer */
-	o_ptr = &c_ptr->d_ptr->powers[o_idx];
-
-	/* Get name of card with power */
-	name = g->deck[c_idx].d_ptr->name;
 
 	/* Check for illegal payment */
 	if (!goods_legal(g, who, c_idx, o_idx, min, max, g_list, num))
 		return 0;
+
+	/* Get player pointer */
+	p_ptr = &g->p[who];
+
+	/* Determine consume power specific information */
+	if (c_idx == -1)
+	{
+		/* Special case: consume goods of a given type */
+		/* No power pointer */
+		o_ptr = NULL;
+
+		/* No name for the card holding the power */
+		name = NULL;
+	}
+	else
+	{
+		/* Get pointer to card holding power used */
+		c_ptr = &g->deck[c_idx];
+
+		/* Get power pointer */
+		o_ptr = &c_ptr->d_ptr->powers[o_idx];
+
+		/* Get name of card with power */
+		name = g->deck[c_idx].d_ptr->name;
+	}
 
 	/* Loop over chosen goods */
 	for (i = 0; i < num_saved; ++i)
@@ -9220,8 +9256,18 @@ int good_chosen(game *g, int who, int c_idx, int o_idx,
 		if (!g->simulation)
 		{
 			/* Format message */
-			sprintf(msg, "%s consumes good from %s using %s.\n",
-			        p_ptr->name, c_ptr->d_ptr->name, name);
+			n = sprintf(msg, "%s consumes good from %s",
+			        p_ptr->name, c_ptr->d_ptr->name);
+
+			/* If power origin is available */
+			if (name)
+			{
+				/* Add power origin */
+				n += sprintf(msg + n, " using %s", name);
+			}
+
+			/* Add newline */
+			sprintf(msg + n, ".\n");
 
 			/* Send message */
 			message_add(g, msg);
@@ -9229,7 +9275,7 @@ int good_chosen(game *g, int who, int c_idx, int o_idx,
 	}
 
 	/* No rewards from non-consume phase powers */
-	if (o_ptr->phase != PHASE_CONSUME) return 1;
+	if (!o_ptr || o_ptr->phase != PHASE_CONSUME) return 1;
 
 	/* Compute number of times award is given */
 	times = o_ptr->times;
@@ -11876,6 +11922,7 @@ void phase_produce_end(game *g)
 void produce_player(game *g, int who)
 {
 	player *p_ptr = &g->p[who];
+	int goods[MAX_GOOD][MAX_DECK], num_list[MAX_GOOD], n_list[MAX_GOOD];
 
 	/* Clear phase rewards */
 	p_ptr->phase_cards = p_ptr->phase_vp = 0;
@@ -11883,6 +11930,46 @@ void produce_player(game *g, int who)
 
 	/* Set current player */
 	g->turn = who;
+
+	/* Check invasion mode enabled */
+	if (invasion_enabled(g))
+	{
+		/* Contribution step. This is performed here rather than in
+		 * phase_produce_start because for the AI, this step is part of
+		 * the production phase optimization
+		 */
+
+		/* Get list of goods */
+		get_all_goods(g, who, goods, num_list, n_list);
+
+		/* If goods are available, ask for contribution */
+		if (n_list[0])
+		{
+			/* Ask player to choose good to discard */
+			ask_player(g, who, CHOICE_CONTRIBUTE, goods[0], &n_list[0],
+					   NULL, NULL, 0, 0, 0);
+
+			/* Check for aborted game */
+			if (g->game_over) return;
+		}
+
+		/* Process all contributed goods in one step */
+		if (n_list[0])
+		{
+			/* Discard good */
+			good_chosen(g, who, -1, GOOD_ANY, n_list[0], n_list[0],
+			            goods[0], n_list[0]);
+
+			/* Award VPs */
+			gain_vps(g, who, n_list[0], "contribution against Xeno");
+
+			/* Count reward */
+			p_ptr->phase_vp += n_list[0];
+
+			/* Track contribution */
+			g->p[who].contrib_vp += n_list[0];
+		}
+	}
 
 	/* Use player's produce powers */
 	while (produce_action(g, who));
@@ -14751,6 +14838,16 @@ static void score_game_player(game *g, int who)
 
 	/* Start with VP chips */
 	p_ptr->end_vp = p_ptr->vp;
+
+	/* Invasion games special vp */
+	if (invasion_enabled(g))
+	{
+		/* Add reward points */
+		p_ptr->end_vp += p_ptr->reward_vp;
+
+		/* Add contribution points */
+		p_ptr->end_vp += p_ptr->contrib_vp;
+	}
 
 	/* Start at first active card */
 	x = p_ptr->head[WHERE_ACTIVE];

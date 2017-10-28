@@ -8205,6 +8205,15 @@ static int ai_choose_oort_kind(game *g, int who)
 	return GOOD_ALIEN;
 }
 
+/*
+ * Choose contribution against Xeno.
+ */
+static void ai_choose_contribute(game *g, int who, int list[], int *num)
+{
+	/* For the time being, contribute all goods, which amount to do nothing */
+
+	/* TODO better AI behaviour */
+}
 
 /*
  * Make a choice of the given type.
@@ -8424,6 +8433,13 @@ static void ai_make_choice(game *g, int who, int type, int list[], int *nl,
 
 			/* Choose kind */
 			rv = ai_choose_oort_kind(g, who);
+			break;
+
+		/* Choose goods to contribute */
+		case CHOICE_CONTRIBUTE:
+			/* Choose goods to contribute */
+			ai_choose_contribute(g, who, list, nl);
+			rv = 0;
 			break;
 
 		/* Error */

@@ -446,15 +446,16 @@ struct extra_info
 /*
  * Restriction types on action button sensitivity.
  */
-#define RESTRICT_NUM      1
-#define RESTRICT_BOTH     2
-#define RESTRICT_PAY      3
-#define RESTRICT_GOOD     4
-#define RESTRICT_TAKEOVER 5
-#define RESTRICT_DEFEND   6
-#define RESTRICT_UPGRADE  7
-#define RESTRICT_CONSUME  8
-#define RESTRICT_START    9
+#define RESTRICT_NUM                1
+#define RESTRICT_BOTH               2
+#define RESTRICT_PAY                3
+#define RESTRICT_GOOD               4
+#define RESTRICT_TAKEOVER           5
+#define RESTRICT_DEFEND             6
+#define RESTRICT_UPGRADE            7
+#define RESTRICT_CONSUME            8
+#define RESTRICT_START              9
+#define RESTRICT_CONTRIBUTE        12
 
 /*
  * Restriction on action button.
@@ -2043,6 +2044,13 @@ static void update_action_sensitivity()
 	{
 		/* Set sensitivity */
 		gtk_widget_set_sensitive(action_button, action_check_start());
+	}
+
+	/* Check for "contribute" restriction on action button */
+	else if (action_restrict == RESTRICT_CONTRIBUTE)
+	{
+		/* Set sensitivity */
+		gtk_widget_set_sensitive(action_button, TRUE);
 	}
 }
 
@@ -8883,8 +8891,26 @@ void gui_choose_good(game *g, int who, int c_idx, int o_idx, int goods[],
 	c_ptr = &real_game.deck[c_idx];
 
 	/* Create prompt */
-	sprintf(buf, "Choose good%s to consume on %s",
-	        min == 1 && max == 1 ? "" : "s", c_ptr->d_ptr->name);
+	if (c_idx != -1)
+	{
+		sprintf(buf, "Choose good%s to consume on %s",
+		        min == 1 && max == 1 ? "" : "s", c_ptr->d_ptr->name);
+	}
+	else
+	{
+		if (min != max)
+		{
+			sprintf(buf, "Choose from %d to %d goods to consume", min, max);
+		}
+		else if (min == 1)
+		{
+			sprintf(buf, "Choose a good to consume");
+		}
+		else
+		{
+			sprintf(buf, "Choose %d goods to consume", min);
+		}
+	}
 
 	/* Set prompt */
 	gtk_label_set_text(GTK_LABEL(action_prompt), buf);
@@ -9822,6 +9848,74 @@ int gui_choose_oort_kind(game *g, int who)
 }
 
 /*
+ * Choose good(s) to contribute.
+ */
+void gui_choose_contribute(game *g, int who, int goods[], int *num)
+{
+	char buf[1024];
+	displayed *i_ptr;
+	int i, j, n = 0;
+
+	sprintf(buf, "Choose good(s) to contribute");
+
+	/* Set prompt */
+	gtk_label_set_text(GTK_LABEL(action_prompt), buf);
+
+	/* Set restrictions on action button */
+	action_restrict = RESTRICT_CONTRIBUTE;
+
+	/* Reset displayed cards */
+	reset_cards(g, TRUE, FALSE);
+
+	/* Loop over cards in list */
+	for (i = 0; i < *num; i++)
+	{
+		/* Loop over cards on table */
+		for (j = 0; j < table_size[player_us]; j++)
+		{
+			/* Get displayed card pointer */
+			i_ptr = &table[player_us][j];
+
+			/* Check for matching index */
+			if (i_ptr->index == goods[i])
+			{
+				/* Card is eligible */
+				i_ptr->eligible = 1;
+
+				/* Push good upwards when selected */
+				i_ptr->push = 1;
+			}
+		}
+	}
+
+	/* (De)activate action button */
+	gtk_widget_set_sensitive(action_button, TRUE);
+
+	/* Redraw everything */
+	redraw_everything();
+
+	/* Process events */
+	gtk_main();
+
+	/* Loop over cards on table */
+	for (i = 0; i < table_size[player_us]; i++)
+	{
+		/* Get displayed card pointer */
+		i_ptr = &table[player_us][i];
+
+		/* Check for selected */
+		if (i_ptr->selected)
+		{
+			/* Add to list */
+			goods[n++] = i_ptr->index;
+		}
+	}
+
+	/* Set number of goods chosen */
+	*num = n;
+}
+
+/*
  * Player spots have been rotated.
  */
 static void gui_notify_rotation(game *g, int who)
@@ -10217,6 +10311,14 @@ static void gui_make_choice(game *g, int who, int type, int list[], int *nl,
 
 			/* Choose type */
 			rv = gui_choose_oort_kind(g, who);
+			break;
+
+		/* Choose produce power to use */
+		case CHOICE_CONTRIBUTE:
+
+			/* Choose power */
+			gui_choose_contribute(g, who, list, nl);
+			rv = 0;
 			break;
 
 		/* Error */

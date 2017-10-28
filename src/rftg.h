@@ -644,6 +644,7 @@ extern const int8_t xeno_repulse_value[6];
 #define CHOICE_SEARCH_TYPE      22
 #define CHOICE_SEARCH_KEEP      23
 #define CHOICE_OORT_KIND        24
+#define CHOICE_CONTRIBUTE       27
 
 /*
  * Debug choices are negative
@@ -925,6 +926,12 @@ typedef struct player
 
 	/* Victory point chips */
 	int16_t vp;
+
+	/* Victory points from rewards for defeating invasion */
+	int16_t reward_vp;
+
+	/* Victory points from contribution against Xeno */
+	int16_t contrib_vp;
 
 	/* Victory points from goals */
 	int16_t goal_vp;
