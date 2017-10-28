@@ -432,6 +432,13 @@ static status_display status_player[MAX_PLAYER];
  */
 static int display_deck, display_discard, display_pool;
 
+typedef enum extra_info_pos
+{
+	CENTER = 0,
+	TOP_LEFT,
+	SLOT_POWER
+} extra_info_pos;
+
 /*
  * Extra text and font string to be drawn on an image.
  */
@@ -440,7 +447,7 @@ struct extra_info
 	char text[1024];
 	char *fontstr;
 	int border;
-	int top_left;
+	extra_info_pos pos;
 };
 
 /*
@@ -1811,11 +1818,22 @@ static gboolean draw_extra_text(GtkWidget *image, GdkEventExpose *event,
 	pango_layout_get_pixel_size(layout, &tw, &th);
 
 	/* Check for centered text */
-	if (!ei->top_left)
+	switch (ei->pos)
 	{
-		/* Compute point to start drawing */
-		x = (image->allocation.width - tw) / 2 + image->allocation.x;
-		y = (image->allocation.height - th) / 2 + image->allocation.y;
+		case CENTER:
+			/* Compute point to start drawing */
+			x = (image->allocation.width - tw) / 2 + image->allocation.x;
+			y = (image->allocation.height - th) / 2 + image->allocation.y;
+			break;
+		case SLOT_POWER:
+			/* Compute point to start drawing */
+			x = 78*image->allocation.width/100 - tw/2 + image->allocation.x;
+			y = (image->allocation.height - th) / 2 + image->allocation.y;
+			break;
+		case TOP_LEFT:
+		default:
+			x = 0;
+			y = 0;
 	}
 
 	/* Draw border around text if asked */
@@ -14680,7 +14698,7 @@ int main(int argc, char *argv[])
 		card_extra_info[i].fontstr = "Sans 8";
 
 		/* Set position */
-		card_extra_info[i].top_left = 1;
+		card_extra_info[i].pos = TOP_LEFT;
 	}
 
 	/* Create main vbox to hold menu bar, then rest of game area */
