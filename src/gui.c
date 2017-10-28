@@ -5904,6 +5904,29 @@ static void reset_table(game *g, int who, int color)
 
 	/* Sort list */
 	qsort(table[who], table_size[who], sizeof(displayed), cmp_table);
+
+	/* Add Xeno invasion card */
+	if (invasion_enabled(g) && (i = g->p[who].invasion_card_idx) != -1)
+	{
+		/* Get next entry in table list */
+		i_ptr = &table[who][table_size[who]++];
+
+		/* Reset structure */
+		reset_display(i_ptr);
+
+		/* Get card pointer */
+		c_ptr = &g->xeno_deck[i];
+
+		/* Add card information */
+		i_ptr->index = i;
+		i_ptr->d_ptr = c_ptr->d_ptr;
+
+		/* Set color flag */
+		i_ptr->color = 1;
+
+		/* TODO keep? Get tooltip */
+		i_ptr->tooltip = NULL;//card_table_tooltip(g, player_us, i);
+	}
 }
 
 /*
