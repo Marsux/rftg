@@ -354,6 +354,7 @@ int player_has(game *g, int who, design *d_ptr)
 int count_active_flags(game *g, int who, int flags)
 {
 	int x, count = 0;
+	card *c_ptr;
 
 	/* Start at first active card */
 	x = g->p[who].start_head[WHERE_ACTIVE];
@@ -361,8 +362,16 @@ int count_active_flags(game *g, int who, int flags)
 	/* Loop over cards */
 	for ( ; x != -1; x = g->deck[x].start_next)
 	{
-		/* Check for correct flags */
-		if ((g->deck[x].d_ptr->flags & flags) == flags) count++;
+		/* Get card pointer */
+		c_ptr = &g->deck[x];
+
+		/* Check for correct flags and non-damaged */
+		if ((c_ptr->d_ptr->flags & flags) == flags &&
+		    !(c_ptr->misc & MISC_DAMAGED))
+		{
+			/* Increment count */
+			count++;
+		}
 	}
 
 	/* Return count */
@@ -1955,6 +1964,9 @@ int get_powers(game *g, int who, int phase, power_where *w_list)
 
 		/* Skip invasion cards */
 		if (c_ptr->d_ptr->type == TYPE_INVASION) continue;
+
+		/* Skip damaged worlds */
+		if (c_ptr->misc & MISC_DAMAGED) continue;
 
 		/* Loop over card's powers */
 		for (i = 0; i < c_ptr->d_ptr->num_power; i++)
@@ -10669,6 +10681,9 @@ static void discard_windfall(game *g, int who, int c_idx, int o_idx)
 		/* Skip worlds with goods already */
 		if (c_ptr->num_goods) continue;
 
+		/* Skip damaged worlds */
+		if (c_ptr->misc & MISC_DAMAGED) continue;
+
 		/* Add world to special list */
 		special[num_special++] = i;
 	}
@@ -10754,6 +10769,9 @@ static void produce_windfall(game *g, int who, int c_idx, int o_idx)
 			/* Skip world */
 			continue;
 		}
+
+		/* Skip damaged world */
+		if (c_ptr->misc & MISC_DAMAGED) continue;
 
 		/* Add to list */
 		list[n++] = x;
@@ -10885,6 +10903,9 @@ void produce_chosen(game *g, int who, int c_idx, int o_idx)
 			/* Get card pointer */
 			c_ptr = &g->deck[x];
 
+			/* Skip damaged world */
+			if (c_ptr->misc & MISC_DAMAGED) continue;
+
 			/* Check for rare world */
 			if (c_ptr->d_ptr->good_type == GOOD_RARE ||
 			    c_ptr->d_ptr->good_type == GOOD_ANY) count++;
@@ -10914,6 +10935,9 @@ void produce_chosen(game *g, int who, int c_idx, int o_idx)
 		{
 			/* Get card pointer */
 			c_ptr = &g->deck[x];
+
+			/* Skip damaged world */
+			if (c_ptr->misc & MISC_DAMAGED) continue;
 
 			/* Check for gene world */
 			if (c_ptr->d_ptr->good_type == GOOD_GENE ||
@@ -14674,6 +14698,9 @@ int get_score_bonus(game *g, int who, int which)
 		/* Get card pointer */
 		c_ptr = &g->deck[x];
 
+		/* Skip damaged world */
+		if (c_ptr->misc & MISC_DAMAGED) continue;
+
 		/* Loop over scoring card's bonuses */
 		for (i = 0; i < score->d_ptr->num_vp_bonus; i++)
 		{
@@ -14719,6 +14746,9 @@ static void score_game_player(game *g, int who)
 	{
 		/* Get card pointer */
 		c_ptr = &g->deck[x];
+
+		/* Skip damaged world */
+		if (c_ptr->misc & MISC_DAMAGED) continue;
 
 		/* Add points from card */
 		p_ptr->end_vp += c_ptr->d_ptr->vp;

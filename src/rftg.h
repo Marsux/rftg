@@ -291,7 +291,8 @@ extern int exp_max_player[MAX_EXPANSION];
 #define MISC_USED_SHIFT     8
 #define MISC_PRODUCED_MASK  (0x7 << 13)
 #define MISC_PRODUCED_SHIFT 13
-#define MISC_TEMP_MASK      (MISC_KNOWN_MASK | MISC_FAKE)
+#define MISC_DAMAGED        (1 << 16)
+#define MISC_TEMP_MASK      (MISC_KNOWN_MASK | MISC_FAKE | MISC_DAMAGED)
 
 /*
  * Search categories.
@@ -792,7 +793,7 @@ typedef struct card
 	int8_t start_where;
 
 	/* Miscellaneous card flags */
-	uint16_t misc;
+	uint32_t misc;
 
 	/* Card design */
 	design *d_ptr;

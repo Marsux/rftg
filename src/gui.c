@@ -3155,6 +3155,9 @@ static char *get_vp_tooltip(game *g, int who)
 		/* Get card pointer */
 		c_ptr = &g->deck[x];
 
+		/* Skip damaged world */
+		if (c_ptr->misc & MISC_DAMAGED) continue;
+
 		/* Check for world */
 		if (c_ptr->d_ptr->type == TYPE_WORLD)
 		{
@@ -5550,6 +5553,9 @@ static void compute_military(game *g, int who, mil_strength *m_ptr)
 	{
 		/* Get card pointer */
 		c_ptr = &g->deck[x];
+
+		/* Skip damaged world */
+		if (c_ptr->misc & MISC_DAMAGED) continue;
 
 		/* Loop over card's powers */
 		for (i = 0; i < c_ptr->d_ptr->num_power; i++)
