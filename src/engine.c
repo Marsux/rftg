@@ -12341,8 +12341,6 @@ int defend_invasion_possible(game *g, int who, int deficit, int n,
 			gfd->val = o_ptr->value;
 			continue;
 		}
-				/* Take card */
-				move_card(g, j, i, WHERE_HAND);
 
 		/* Consume novelty good for defense */
 		if (o_ptr->code & P3_CONSUME_NOVELTY)
@@ -12353,9 +12351,6 @@ int defend_invasion_possible(game *g, int who, int deficit, int n,
 			gfd->val = o_ptr->value;
 			continue;
 		}
-				/* Adjust known flags */
-				c_ptr->misc &= ~MISC_KNOWN_MASK;
-				c_ptr->misc |= (1 << i);
 
 		/* Consume rare good for defense */
 		if (o_ptr->code & P3_CONSUME_RARE)
@@ -12366,9 +12361,6 @@ int defend_invasion_possible(game *g, int who, int deficit, int n,
 			gfd->val = o_ptr->value;
 			continue;
 		}
-				/* Count cards taken */
-				taken++;
-			}
 
 		/* Consume gene good for defense */
 		if (o_ptr->code & P3_CONSUME_GENE)
@@ -12379,15 +12371,6 @@ int defend_invasion_possible(game *g, int who, int deficit, int n,
 			gfd->val = o_ptr->value;
 			continue;
 		}
-			/* Check for cards taken */
-			if (taken > 0)
-			{
-				/* Message */
-				if (!g->simulation)
-				{
-					/* Format message */
-					sprintf(msg, "%s takes %d discard%s.\n",
-					        g->p[i].name, taken, PLURAL(taken));
 
 		/* Consume alien good for defense */
 		if (o_ptr->code & P3_CONSUME_ALIEN)
@@ -12397,57 +12380,27 @@ int defend_invasion_possible(game *g, int who, int deficit, int n,
 			gfd->type = GOOD_ALIEN;
 			gfd->val = o_ptr->value;
 			continue;
-					/* Send message */
-					message_add(g, msg);
-				}
-			}
 		}
 	}
-}
-
-/* int comparison function */
-int cmp_int(const void *a, const void *b)
-{
-	const int *ia = (const int *) a;
-	const int *ib = (const int *) b;
-	return *ib - *ia;
-}
-
-/*
- * Handle the Invasion Phase.
- */
-void phase_invasion(game *g)
-{
-	int i;
-	int card_idx[MAX_PLAYER];
-	char msg[1024];
 
 	/* Determine the maximum amount of defense available through hand discard
 	 * Assumes that discarding one card is enough to activate a defense power,
 	 * and that the defense gain is between 1 and 3.
 	 */
 	for (i = 3; n > 0 && i > 0; i--)
-	/* Check for no invasion phase */
-	if (g->round < 3)
 	{
 		/* As long as one can discard a card for i defense */
 		while (n > 0 && hand_defense[i] > 0)
 		{
 			/* Increase maximum defense available */
 			max_def += i;
-		/* Remove a card from the Wave 0 deck */
-		g->xeno_n_invasion_card[0]--;
 
 			/* Note used power */
 			hand_defense[i]--;
-		/* Increment wave if necessary */
-		if (g->round == 2) g->xeno_wave++;
 
 			/* Note used card */
 			n--;
 		}
-		/* Do not perform any other action in the phase */
-		return;
 	}
 
 	/* Determine the maximum amount of defense available through good
@@ -12458,40 +12411,25 @@ void phase_invasion(game *g)
 	 * determine max_def by a gready algorithm.
 	 */
 	if (n_consume_power)
-	/* Check for first invasion phase */
-	if (g->round == 3)
-	{
-		/* Setup the repulse track */
-	}
-	else
 	{
 		/* Determine the number of goods available */
 		count_all_goods(g, who, types);
-		/* Update the repulse track */
-	}
 
 		/* Sort the consume power */
 		qsort(consume_power, n_consume_power, sizeof(good_for_defense),
 		      &cmp_good_for_defense);
-	/* Check for end of game by repulsion of Xeno */
 
 		/* Try to use consume power */
 		for (i = 0; i < n_consume_power; i++)
 		{
 			/* Get consume power pointer */
 			gfd = &consume_power[i];
-	/* Draw Xeno invasion cards */
-	for (i = 0; i < g->num_players; i++) card_idx[i] = random_invasion_draw(g);
 
 			/* Case of specific good type */
 			if (gfd->type != GOOD_ANY && types[gfd->type] > 0)
 			{
 				/* Increase defense */
 				max_def += gfd->val;
-	/* Sort the cards by value, assumes they are inserted in increasing order
-	 * in the deck
-	 */
-	qsort(card_idx, g->num_players, sizeof(int), cmp_int);
 
 				/* Consume good */
 				types[gfd->type]--;
@@ -12507,20 +12445,9 @@ void phase_invasion(game *g)
 					{
 						/* Increase defense */
 						max_def += gfd->val;
-	/* Attribute cards to players according to their position on the track */
-	for (i = 0; i < g->num_players; i++)
-	{
-		/* Message */
-		if (!g->simulation)
-		{
-			/* Prepare message */
-			sprintf(msg, "%s drawn\n", g->xeno_deck[card_idx[i]].d_ptr->name);
 
 						/* Consume good */
 						types[j]--;
-			/* Send message */
-			message_add(g, msg);
-		}
 
 						/* Stop looking */
 						break;
@@ -12528,37 +12455,25 @@ void phase_invasion(game *g)
 				}
 			}
 		}
-		/* Move card to discard */
-		move_card(g, card_idx[i], -1, WHERE_XENO_DISCARD, 1);
 	}
 
 	/* Determine whether defense is possible */
 	return max_def > deficit ? 1 : 0;
 }
 
-	/* Get players defense decisions */
 /*
  * Called when player has chosen a method of defense against invasion.
- * Let player choose its defense against Xeno.
  *
  * We return:
  *   0 if the method is illegal
  *   1 if the method is legal but insufficient to protect against invasion
  *   2 if the method is legal and protects against the invasion
- *   0 if the defense fails
- *   1 if the method enables to defeat the invasion
  */
 int defend_invasion_callback(game *g, int who, int deficit, int list[], int num,
                              int special[], int num_special, int test_only)
-int defend_invasion_player(game *g, int who, int wave_strength)
 {
 	player *p_ptr;
 	card *c_ptr;
-	power_where w_list[100], *w_ptr;
-	int i, n_power = 0;
-	int list[MAX_DECK], special[MAX_DECK];
-	int types[MAX_GOOD];
-	int n_cards, n, num_special = 0;
 	power *o_ptr;
 	int defense = 0, hand_defense = 0, cards_needed = 0, cards_used;
 	int g_list[MAX_GOOD][MAX_DECK], num_list[MAX_GOOD];
@@ -12570,8 +12485,6 @@ int defend_invasion_player(game *g, int who, int wave_strength)
 
 	/* Init goods needed */
 	for (i = 0; i < MAX_GOOD; i++) goods_needed[i] = 0;
-    int defense = 0, deficit;
-	int xeno_strength;
 
 	/* Get player pointer */
 	p_ptr = &g->p[who];
@@ -13162,7 +13075,6 @@ int defend_invasion_player(game *g, int who, int wave_strength)
 	                                special, num_special, 0) == 2 ? 1 : 0;
 }
 
-	/* Attribute rewards */
 /* int comparison function */
 int cmp_int(const void *a, const void *b)
 {
