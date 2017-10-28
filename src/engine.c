@@ -7533,6 +7533,17 @@ int defend_callback(game *g, int who, int deficit, int list[], int num,
 
 				/* Remember bonus for later */
 				p_ptr->bonus_military += o_ptr->value;
+
+				/* Message */
+				if (!g->simulation)
+				{
+					/* Format message */
+					sprintf(msg, "%s discards a Rare good for "
+					        "extra military.\n", p_ptr->name);
+
+					/* Send message */
+					message_add(g, msg);
+				}
 			}
 
 			/* Check for consume to increase military */
@@ -7551,7 +7562,7 @@ int defend_callback(game *g, int who, int deficit, int list[], int num,
 				if (!g->simulation)
 				{
 					/* Format message */
-					sprintf(msg, "%s discards a Rare good for "
+					sprintf(msg, "%s discards an Alien good for "
 					        "extra military.\n", p_ptr->name);
 
 					/* Send message */
