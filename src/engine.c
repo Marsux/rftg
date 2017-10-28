@@ -12252,32 +12252,10 @@ void phase_discard(game *g)
 }
 
 typedef struct good_for_defense
-/* Insert a repulse info in the repulse track. In case of equality, inserts on
- * top.
- */
-static void repulse_track_insert(game *g, repulse_info *r)
 {
 	int8_t type;
 	int8_t val;
 } good_for_defense;
-	repulse_info *cur, *prev;
-
-	/* Look for the position where to insert */
-	for (prev = NULL, cur = g->xeno_repulse_track;
-	     cur != NULL && r->xeno_strength < cur->xeno_strength;
-	     prev = cur, cur = cur->next);
-
-	/* Make the start of the track point to r */
-	if (prev == NULL)
-	{
-		/* Case of insertion at the beginning of the track */
-		g->xeno_repulse_track = r;
-	}
-	else
-	{
-		/* Other case */
-		prev->next = r;
-	}
 
 int cmp_good_for_defense(const void *ptr1, const void *ptr2)
 {
@@ -12290,18 +12268,6 @@ int cmp_good_for_defense(const void *ptr1, const void *ptr2)
 	if (gfd1->val == GOOD_ANY) return 1;
 	if (gfd2->val == GOOD_ANY) return -1;
 	return 0;
-	/* Connect r to it predecessor */
-	r->prev = prev;
-
-	/* Connect r to its successor */
-	r->next = cur;
-
-	/* Make the end of the track point to r */
-	if (cur != NULL)
-	{
-		/* Case of insertion at the beginning of the track */
-		cur->prev = r;
-	}
 }
 
 /* Test whether a selection of powers in special make it possible to defend
@@ -13234,6 +13200,44 @@ int cmp_int(const void *a, const void *b)
 	const int *ia = (const int *) a;
 	const int *ib = (const int *) b;
 	return *ib - *ia;
+}
+
+/* Insert a repulse info in the repulse track. In case of equality, inserts on
+ * top.
+ */
+static void repulse_track_insert(game *g, repulse_info *r)
+{
+	repulse_info *cur, *prev;
+
+	/* Look for the position where to insert */
+	for (prev = NULL, cur = g->xeno_repulse_track;
+	     cur != NULL && r->xeno_strength < cur->xeno_strength;
+	     prev = cur, cur = cur->next);
+
+	/* Make the start of the track point to r */
+	if (prev == NULL)
+	{
+		/* Case of insertion at the beginning of the track */
+		g->xeno_repulse_track = r;
+	}
+	else
+	{
+		/* Other case */
+		prev->next = r;
+	}
+
+	/* Connect r to it predecessor */
+	r->prev = prev;
+
+	/* Connect r to its successor */
+	r->next = cur;
+
+	/* Make the end of the track point to r */
+	if (cur != NULL)
+	{
+		/* Case of insertion at the beginning of the track */
+		cur->prev = r;
+	}
 }
 
 
