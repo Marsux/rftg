@@ -12272,13 +12272,9 @@ int cmp_good_for_defense(const void *ptr1, const void *ptr2)
 
 /* Test whether a selection of powers in special make it possible to defend
  * a given deficit. Return 1 if it is the case, 0 otherwise.
-/* Move item r before item s in the repulse_track of game g.
- * Assumes r was not at the beginning.
  */
 int defend_invasion_possible(game *g, int who, int deficit, int n,
                              power_where w_list[], int n_power)
-static void repulse_track_move_before(game *g, repulse_info *r,
-                                               repulse_info *s)
 {
 	int i, j;
 	/* Number of power providing X defense */
@@ -12288,25 +12284,14 @@ static void repulse_track_move_before(game *g, repulse_info *r,
 	int max_def = 0;
 	good_for_defense consume_power[100], *gfd;
 	int n_consume_power = 0;
-	/* Remove r from its previous position */
-	r->prev->next = r->next;
-	if (r->next) r->next->prev = r->prev;
 
 	/* Init hand defense per value of defense provided */
 	for (i = 0; i < 4; i++) hand_defense[i] = 0;
-	/* Update predecessor and successor of r */
-	r->prev = s->prev;
-	r->next = s;
 
 	for (i = 0; i < n_power; i++)
 	{
 		/* Get power pointer */
 		o_ptr = w_list[i].o_ptr;
-	/* Insert r to it new position */
-	if (s->prev == NULL) g->xeno_repulse_track = r;
-	else s->prev->next = r;
-	s->prev = r;
-}
 
 		/* Special powers */
 		if (!o_ptr)
@@ -13238,6 +13223,26 @@ static void repulse_track_insert(game *g, repulse_info *r)
 		/* Case of insertion at the beginning of the track */
 		cur->prev = r;
 	}
+}
+
+/* Move item r before item s in the repulse_track of game g.
+ * Assumes r was not at the beginning.
+ */
+static void repulse_track_move_before(game *g, repulse_info *r,
+                                               repulse_info *s)
+{
+	/* Remove r from its previous position */
+	r->prev->next = r->next;
+	if (r->next) r->next->prev = r->prev;
+
+	/* Update predecessor and successor of r */
+	r->prev = s->prev;
+	r->next = s;
+
+	/* Insert r to it new position */
+	if (s->prev == NULL) g->xeno_repulse_track = r;
+	else s->prev->next = r;
+	s->prev = r;
 }
 
 
