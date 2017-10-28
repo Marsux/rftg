@@ -370,6 +370,16 @@ int count_active_flags(game *g, int who, int flags)
 }
 
 /*
+ * Count the number of cards in hand. Takes into account fake cards.
+ */
+int count_hand_cards(game *g, int who)
+{
+	player *p_ptr = &g->p[who];
+	return count_player_area(g, who, WHERE_HAND) +
+		     p_ptr->fake_hand - p_ptr->fake_discards
+}
+
+/*
  * Check if a player has selected the given action.
  */
 int player_chose(game *g, int who, int act)
@@ -1741,6 +1751,37 @@ int count_goods(game *g, int who, int type)
 }
 
 /*
+ * Return the number of goods held by a player.
+ */
+void count_all_goods(game *g, int who, int types[])
+{
+	card *c_ptr;
+	int x;
+
+	/* Initialize result table */
+	for (x = 0; x < MAX_GOOD; x++) types[x] = 0;
+
+	/* Start at first active card */
+	x = g->p[who].head[WHERE_ACTIVE];
+
+	/* Loop over cards */
+	for ( ; x != -1; x = g->deck[x].next)
+	{
+		/* Get card pointer */
+		c_ptr = &g->deck[x];
+
+		/* Skip cards that are newly-placed */
+		if (c_ptr->misc & MISC_UNPAID) continue;
+
+		/* Increase number of specific goods */
+		types[c_ptr->d_ptr->good_type] += c_ptr->num_goods;
+
+		/* Increase number of all goods */
+		types[0] += c_ptr->num_goods;
+	}
+}
+
+/*
  * Return a list of cards holding the given type of good.
  */
 int get_goods(game *g, int who, int goods[], int type)
@@ -1773,6 +1814,54 @@ int get_goods(game *g, int who, int goods[], int type)
 
 	/* Return number found */
 	return n;
+}
+
+/*
+ * Return an array of cards holding all types of good.
+ */
+void get_all_goods(game *g, int who, int goods[MAX_GOOD][MAX_DECK],
+                   int num_list[], int n_list[])
+{
+	card *c_ptr;
+	int x, i, type;
+
+	/* Init length of lists of good location */
+	for (i = 0; i < MAX_GOOD; i++) n_list[i] = 0;
+
+	/* Init list of number of goods */
+	for (i = 0; i < MAX_GOOD; i++) num_list[i] = 0;
+
+
+	/* Start at first active card */
+	x = g->p[who].head[WHERE_ACTIVE];
+
+	/* Loop over cards */
+	for ( ; x != -1; x = g->deck[x].next)
+	{
+		/* Get card pointer */
+		c_ptr = &g->deck[x];
+
+		/* Skip cards without goods */
+		if (!c_ptr->num_goods) continue;
+
+		/* Skip cards that are newly-placed */
+		if (c_ptr->misc & MISC_UNPAID) continue;
+
+		/* Get card type */
+		type = c_ptr->d_ptr->good_type;
+
+		/* Add card to specific list */
+		goods[type][n_list[type]++] = x;
+
+		/* Add card to total list */
+		goods[0][n_list[0]++] = x;
+
+		/* Add multiplicity to number of specific goods */
+		num_list[type] += c_ptr->num_goods;
+
+		/* Add multiplicity to number of total goods */
+		num_list[0] += c_ptr->num_goods;
+	}
 }
 
 /*

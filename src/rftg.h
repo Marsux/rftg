@@ -252,6 +252,7 @@ extern int exp_max_player[MAX_EXPANSION];
 /*
  * Good types (and cost).
  */
+#define GOOD_ALL      0
 #define GOOD_ANY      1
 #define GOOD_NOVELTY  2
 #define GOOD_RARE     3
@@ -864,6 +865,9 @@ typedef struct player
 	/* Ask player to make decisions */
 	decisions *control;
 
+	/* Player color index */
+	int8_t color;
+
 	/* Action(s) chosen */
 	int action[2];
 
@@ -1222,6 +1226,7 @@ extern int next_choice(int* log, int pos);
 extern int count_player_area(game *g, int who, int where);
 extern int count_active_flags(game *g, int who, int flags);
 extern int player_has(game *g, int who, design *d_ptr);
+extern int count_hand_cards(game *g, int who);
 extern int player_chose(game *g, int who, int act);
 extern int prestige_on_tile(game *g, int who);
 extern int first_draw(game *g);
