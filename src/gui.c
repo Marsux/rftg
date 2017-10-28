@@ -247,6 +247,9 @@ typedef struct displayed
 	/* Order card was played in (if on table) */
 	int order;
 
+	/* Card is damaged */
+	int damaged;
+
 	/* Tooltip to display (if any) */
 	char *tooltip;
 
@@ -1890,12 +1893,13 @@ static gboolean redraw_action(GtkWidget *widget, GdkEventCrossing *event,
 /*
  * Create an event box containing the given card's image.
  */
-static GtkWidget *new_image_box(design *d_ptr, int w, int h, int color,
-                                int highlight, int back, int accel_key)
+static GtkWidget *new_image_box(design *d_ptr, int w, int h,
+                                int color, int highlight, int damaged,
+                                int back, int accel_key)
 {
-	GdkPixbuf *buf, *border_buf, *blank_buf;
+	GdkPixbuf *buf, *border_buf, *blank_buf, *damage_buf, *orig;
 	GtkWidget *image, *box;
-	int bw;
+	int bw, hd, wd;
 
 	/* Check for no image */
 	if (back)
@@ -1912,10 +1916,28 @@ static GtkWidget *new_image_box(design *d_ptr, int w, int h, int color,
 	}
 
 	/* Check for grayscale */
-	if (!color)
+	if (!color || damaged)
 	{
 		/* Desaturate */
 		gdk_pixbuf_saturate_and_pixelate(buf, buf, 0.5, TRUE);
+	}
+
+	/* Check for damaged */
+	if (damaged)
+	{
+		/* Scale damage token */
+		orig = xeno_cache[XENO_DAMAGED];
+		wd = w / 2;
+		hd = wd * gdk_pixbuf_get_height(orig) / gdk_pixbuf_get_width(orig);
+		damage_buf = gdk_pixbuf_scale_simple(orig, wd, hd, GDK_INTERP_BILINEAR);
+
+		/* Composite border onto card image buffer */
+		gdk_pixbuf_composite(damage_buf, buf, w/4, (h-hd)/2, wd, hd,
+		                     w/4, (h-hd)/2, 1, 1,
+		                     GDK_INTERP_BILINEAR, 255);
+
+		/* Release our copy of scaled discard icon */
+		g_object_unref(G_OBJECT(damage_buf));
 	}
 
 	/* Check for border placed around image */
@@ -2435,7 +2457,7 @@ void redraw_hand(void)
 		/* Get event box with image */
 		box = new_image_box(i_ptr->d_ptr, card_w, card_h,
 		                    i_ptr->eligible || i_ptr->color,
-		                    highlight, 0,
+		                    highlight, i_ptr->damaged, 0,
 		                    i_ptr->eligible && (accel_used || opt.key_cues) ?
 		                                       key_count : -1);
 
@@ -2625,7 +2647,7 @@ static void redraw_table_area(int who, GtkWidget *area)
 		/* Get event box with image */
 		box = new_image_box(i_ptr->d_ptr, card_w, card_h,
 		                    i_ptr->eligible || i_ptr->color,
-		                    highlight, 0,
+		                    highlight, i_ptr->damaged, 0,
 		                    i_ptr->eligible && (accel_used || opt.key_cues) ?
 		                                       key_count : -1);
 
@@ -2648,7 +2670,8 @@ static void redraw_table_area(int who, GtkWidget *area)
 			/* Get event box with no image */
 			good_box = new_image_box(i_ptr->d_ptr,
 			                         3 * card_w / 4, 3 * card_h / 4,
-			                         i_ptr->eligible || i_ptr->color, 0, 1, -1);
+			                         i_ptr->eligible || i_ptr->color,
+			                         0, 0, 1, -1);
 
 			/* Place box on card */
 			gtk_fixed_put(GTK_FIXED(area), good_box,
@@ -5868,6 +5891,9 @@ static void reset_table(game *g, int who, int color)
 
 		/* Check for good */
 		i_ptr->num_goods = c_ptr->num_goods;
+
+		/* Check for damage */
+		i_ptr->damaged = c_ptr->misc & MISC_DAMAGED;
 
 		/* Copy order played */
 		i_ptr->order = c_ptr->order;
