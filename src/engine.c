@@ -14122,6 +14122,13 @@ void note_actions(game *g)
 		/* Clear second consume action */
 		g->action_selected[ACT_CONSUME_X2] = 0;
 	}
+
+	/* Invasion mode initial Settle phase */
+	if (invasion_enabled(g) && g->round == 1)
+	{
+		/* Select Settle phase */
+		g->action_selected[ACT_SETTLE] = 1;
+	}
 }
 
 /*
@@ -14312,6 +14319,16 @@ int game_round(game *g)
 				message_add(g, msg);
 			}
 		}
+	}
+
+	/* Advertise initial automatic Settle phase in XI with invasion mode */
+	if (!g->simulation && invasion_enabled(g) && g->round == 1)
+	{
+		/* Message */
+		sprintf(msg, "Invasion mode: Round 1 automatic settle phase.\n");
+
+		/* Send colored message */
+		message_add_formatted(g, msg, FORMAT_INVASION);
 	}
 
 	/* Note actions selected by players */
