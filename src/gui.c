@@ -474,6 +474,7 @@ struct extra_info
 #define RESTRICT_UPGRADE            7
 #define RESTRICT_CONSUME            8
 #define RESTRICT_START              9
+#define RESTRICT_DEFEND_INVASION   10
 #define RESTRICT_CONTRIBUTE        12
 
 /*
@@ -1777,6 +1778,59 @@ static int action_check_start(void)
 }
 
 /*
+ * Function to determine whether selected cards are a legal defense against
+ * invasion.
+ */
+static gboolean action_check_defend_invasion(void)
+{
+	game sim;
+	displayed *i_ptr;
+	int i, n = 0, ns = 0;
+	int list[MAX_DECK], special[MAX_DECK];
+
+	/* Loop over cards in hand */
+	for (i = 0; i < hand_size; i++)
+	{
+		/* Get hand pointer */
+		i_ptr = &hand[i];
+
+		/* Skip unselected */
+		if (!i_ptr->selected) continue;
+
+		/* Add to regular list */
+		list[n++] = i_ptr->index;
+	}
+
+	/* Loop over cards on table */
+	for (i = 0; i < table_size[player_us]; i++)
+	{
+		/* Get table card pointer */
+		i_ptr = &table[player_us][i];
+
+		/* Skip unselected */
+		if (!i_ptr->selected) continue;
+
+		/* Add to special list */
+		special[ns++] = i_ptr->index;
+	}
+
+	/* Check bunker */
+	if (bunker.selected)
+	{
+		/* Add to special list */
+		special[ns++] = -1;
+	}
+	/* Copy game */
+	sim = real_game;
+
+	/* Set simulation flag */
+	sim.simulation = 1;
+
+	/* Try to defend (we don't care about win/lose, just legality */
+	return defend_invasion_callback(&sim, player_us, 0,
+	                                list, n, special, ns, 1);
+}
+
  * Set of "extra info" structures for player statuses.
  */
 static struct extra_info status_extra_info[MAX_PLAYER][8];
@@ -2220,6 +2274,13 @@ static void update_action_sensitivity()
 		gtk_widget_set_sensitive(action_button, action_check_start());
 	}
 
+	/* Check for "defend invasion" restriction on action button */
+	else if (action_restrict == RESTRICT_DEFEND_INVASION)
+	{
+		/* Set sensitivity */
+		gtk_widget_set_sensitive(action_button, action_check_defend_invasion());
+	}
+
 	/* Check for "contribute" restriction on action button */
 	else if (action_restrict == RESTRICT_CONTRIBUTE)
 	{
@@ -2369,6 +2430,28 @@ static gboolean card_selected(GtkWidget *widget, GdkEventButton *event,
 		redraw_table();
 		redraw_hand();
 	}
+
+	/* Event handled */
+	return TRUE;
+}
+
+/* Forward declaration */
+static void redraw_status_area(int who, GtkWidget *box);
+
+/*
+ * Bunker selected/deselected.
+ */
+static gboolean bunker_selected(GtkWidget *widget, GdkEventButton *event,
+                              gpointer data)
+{
+	/* Change selection status */
+	bunker.selected = !bunker.selected;
+
+	/* Update done button sensitivity */
+	update_action_sensitivity();
+
+	/* Redraw player's status */
+	redraw_status_area(player_us, player_status[player_us]);
 
 	/* Event handled */
 	return TRUE;
@@ -10247,6 +10330,159 @@ int gui_choose_oort_kind(game *g, int who)
 }
 
 /*
+ * Choose a method to defend against invasion.
+ */
+void gui_choose_defend_invasion(game *g, int who, int deficit,
+                       int list[], int *num, int special[], int *num_special)
+{
+	displayed *i_ptr;
+	power *o_ptr;
+	char buf[1024];
+	int i, j, n = 0, ns = 0, high_color;
+
+	/* Create prompt */
+	sprintf(buf, "Choose defense against invasion (need %d extra defense)",
+	        deficit + 1);
+
+	/* Set prompt */
+	gtk_label_set_text(GTK_LABEL(action_prompt), buf);
+
+	/* Reset displayed cards */
+	reset_cards(g, FALSE, FALSE);
+
+	/* Reset bunker */
+	reset_display(&bunker);
+
+	/* Set button restriction */
+	action_restrict = RESTRICT_DEFEND_INVASION;
+
+	/* Deactivate action button */
+	gtk_widget_set_sensitive(action_button, TRUE);
+
+	/* Loop over cards in list */
+	for (i = 0; i < *num; i++)
+	{
+		/* Loop over cards in hand */
+		for (j = 0; j < hand_size; j++)
+		{
+			/* Get hand pointer */
+			i_ptr = &hand[j];
+
+			/* Check for matching index */
+			if (i_ptr->index == list[i])
+			{
+				/* Card is eligible */
+				i_ptr->eligible = 1;
+
+				/* Highlight card in red when selected */
+				i_ptr->highlight = HIGH_RED;
+
+				/* Card should be pushed up when selected */
+				i_ptr->push = 1;
+			}
+		}
+	}
+
+	/* Loop over special cards */
+	for (i = 0; i < *num_special; i++)
+	{
+		/* Bunker case */
+		if (special[i] == -1)
+		{
+			/* Make bunker selectable */
+			bunker.eligible = 1;
+		}
+		/* Other defend invasion power */
+		else
+		{
+			/* Assume highlight color will be yellow */
+			high_color = HIGH_YELLOW;
+
+			/* Loop over powers on card */
+			for (j = 0; j < g->deck[special[i]].d_ptr->num_power; j++)
+			{
+				/* Get power pointer */
+				o_ptr = &g->deck[special[i]].d_ptr->powers[j];
+
+				/* Skip non-settle powers */
+				if (o_ptr->phase != PHASE_SETTLE) continue;
+
+				/* Check for discard to use power */
+				if (o_ptr->code & P3_DISCARD) high_color = HIGH_RED;
+			}
+
+			/* Loop over cards on table */
+			for (j = 0; j < table_size[player_us]; j++)
+			{
+				/* Get table card pointer */
+				i_ptr = &table[player_us][j];
+
+				/* Check for matching index */
+				if (i_ptr->index == special[i])
+				{
+					/* Card is eligible */
+					i_ptr->eligible = 1;
+
+					/* Card should be highlighted when selected */
+					i_ptr->highlight = high_color;
+				}
+			}
+		}
+	}
+
+	/* Redraw everything */
+	redraw_everything();
+
+	/* Process events */
+	gtk_main();
+
+	/* Loop over cards in hand */
+	for (i = 0; i < hand_size; i++)
+	{
+		/* Get hand pointer */
+		i_ptr = &hand[i];
+
+		/* Check for selected */
+		if (i_ptr->selected)
+		{
+			/* Add to list */
+			list[n++] = i_ptr->index;
+		}
+	}
+
+	/* Set number of cards selected */
+	*num = n;
+
+	/* Loop over cards on table */
+	for (i = 0; i < table_size[player_us]; i++)
+	{
+		/* Get table card pointer */
+		i_ptr = &table[player_us][i];
+
+		/* Check for selected */
+		if (i_ptr->selected)
+		{
+			/* Add to list */
+			special[ns++] = i_ptr->index;
+		}
+	}
+
+	/* Check bunker */
+	if (bunker.selected)
+	{
+		/* Add to list */
+		special[ns++] = -1;
+	}
+
+	/* Set number of special cards selected */
+	*num_special = ns;
+
+	/* Reset bunker.
+	 * Done here to avoid doing it systematically in reset_table
+	 */
+	reset_display(&bunker);
+}
+
  * Choose good(s) to contribute.
  */
 void gui_choose_contribute(game *g, int who, int goods[], int *num)
@@ -10710,6 +10946,14 @@ static void gui_make_choice(game *g, int who, int type, int list[], int *nl,
 
 			/* Choose type */
 			rv = gui_choose_oort_kind(g, who);
+			break;
+
+		/* Choose a method of defense against invasion */
+		case CHOICE_XENO_DEFEND:
+
+			/* Choose defense method */
+			gui_choose_defend_invasion(g, who, arg1, list, nl, special, ns);
+			rv = 0;
 			break;
 
 		/* Choose produce power to use */
