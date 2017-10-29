@@ -3573,6 +3573,15 @@ static char *get_vp_tooltip(game *g, int who)
 		strcat(msg, text);
 	}
 
+	/* Check for VP from rewards */
+	if (invasion_enabled(g) && p_ptr->reward_vp)
+	{
+		/* Count VP chips */
+		sprintf(text, "\nDefense rewards: %d VP%s",
+		              p_ptr->reward_vp, PLURAL(p_ptr->reward_vp));
+		strcat(msg, text);
+	}
+
 	/* Check for VP from goals */
 	if (p_ptr->goal_vp)
 	{
