@@ -611,6 +611,11 @@ GtkWidget *addai_button, *start_button;
 GtkWidget *action_prompt, *action_button;
 
 /*
+ * Graphic context used to draw on widgets.
+ */
+GdkGC *draw_gc;
+
+/*
  * Keyboard accelerator group for main window.
  */
 static GtkAccelGroup *window_accel;
@@ -1764,12 +1769,12 @@ static int action_check_start(void)
 /*
  * Set of "extra info" structures for player statuses.
  */
-static struct extra_info status_extra_info[MAX_PLAYER][5];
+static struct extra_info status_extra_info[MAX_PLAYER][8];
 
 /*
  * Set of "extra info" structures for game status.
  */
-static struct extra_info game_extra_info[3];
+static struct extra_info game_extra_info[5];
 
 /*
  * Set of "extra info" structures for selectable cards.
@@ -1853,6 +1858,44 @@ static gboolean draw_extra_text(GtkWidget *image, GdkEventExpose *event,
 
 	/* Free font description */
 	pango_font_description_free(font);
+
+	/* Continue handling event */
+	return FALSE;
+}
+
+/*
+ * Draw repulse token on repulse track.
+ */
+static gboolean draw_repulse_token(GtkWidget *image, GdkEventExpose *event,
+                                   gpointer data)
+{
+	GdkWindow *w;
+	int x = 0, y = 0;
+	GdkGCValues val;
+	player *p_ptr;
+
+
+	/* Get player index */
+	p_ptr = &real_game.p[GPOINTER_TO_INT(data)];
+
+	printf("Displaying token for %s\n", p_ptr->name);
+
+	/* Get window to draw on */
+	w = gtk_widget_get_window(image);
+
+	gdk_drawable_get_size(w, &x, &y);
+
+	printf("%d %d\n", x, y);
+
+	/* Set draw color */
+	gdk_rgb_gc_set_foreground(draw_gc, player_colors_int[p_ptr->color]);
+
+	gdk_gc_get_values(draw_gc, &val);
+
+	/* Draw the player token */
+	gdk_draw_arc(w, draw_gc, TRUE,
+	             image->allocation.x+2, image->allocation.y, 36, 36,
+				 0, 64*360);
 
 	/* Continue handling event */
 	return FALSE;
@@ -2987,27 +3030,41 @@ void redraw_invasion(void)
 	GtkWidget *image, *info_box, *repulse_box, *h_box, *xeno_status_box;
 	GtkWidget *arrow;
 	GdkPixbuf *buf, *orig;
-	int i;
+	int i, j, wave;
 	int width, image_h, image_w;
 	int width_repulse = 60, width_info = 80;
+	repulse_info *r;
+	struct extra_info *ei;
 
 	/* Do not do anything if invasion is not enabled */
 	if (!invasion_enabled(&real_game)) return;
 
+	/* Determine wave */
+	wave = real_game.xeno_wave;
+
 	/* First destroy all pre-existing goal widgets */
 	gtk_container_foreach(GTK_CONTAINER(invasion_area), destroy_widget, NULL);
+
+	/* Setup GC */
+	if (draw_gc == NULL)
+	{
+		draw_gc = gdk_gc_new(gtk_widget_get_root_window(invasion_area));
+
+		gdk_gc_set_line_attributes(draw_gc, 2, GDK_LINE_SOLID,
+		GDK_CAP_BUTT, GDK_JOIN_MITER);
+	}
 
 	/* Get invasion area width */
 	width = invasion_area->allocation.width;
 
 	/* Determine which invasion cardback to display */
-	if (real_game.xeno_wave == 0)
+	if (wave == 0)
 	{
 		i = real_game.round <= 1 ? XENO_ROUND_1 : XENO_ROUND_2;
 	}
 	else
 	{
-		i = XENO_WAVE_1 + real_game.xeno_wave - 1;
+		i = XENO_WAVE_1 + wave - 1;
 	}
 
 	/* Scale invasion cardback to display */
@@ -3053,7 +3110,9 @@ void redraw_invasion(void)
 	buf = gdk_pixbuf_scale_simple(orig, image_w,image_h, GDK_INTERP_BILINEAR);
 
 	/* Add slots to the repulse track */
-	for (i = 0; i < real_game.num_players; i++)
+	for (i = 0, r = real_game.xeno_repulse_track;
+	     i < real_game.num_players;
+	     i++)
 	{
 		if (i > 0)
 		{
@@ -3066,6 +3125,35 @@ void redraw_invasion(void)
 
 		/* Make image widget */
 		image = gtk_image_new_from_pixbuf(buf);
+
+		if (r != NULL)
+		{
+			/* Connect expose-event to draw extra text */
+			g_signal_connect_after(G_OBJECT(image), "expose-event",
+								   G_CALLBACK(draw_repulse_token),
+			                       GINT_TO_POINTER(r->player));
+
+			/* Pointer to extra info structure */
+			ei = &status_extra_info[r->player][5];
+
+			/* Create text for handsize */
+			sprintf(ei->text, "<b>%d</b>", r->xeno_strength);
+
+			/* Set font */
+			ei->fontstr = "Sans 12";
+
+			/* Draw text a border */
+			ei->border = 1;
+
+			ei->pos = SLOT_POWER;
+
+			/* Connect expose-event to draw extra text */
+			g_signal_connect_after(G_OBJECT(image), "expose-event",
+								   G_CALLBACK(draw_extra_text), ei);
+
+			/* Next repulse info */
+			r = r->next;
+		}
 
 		/* Pack image into repulse track area */
 		gtk_box_pack_start(GTK_BOX(repulse_box), image, FALSE, FALSE, 0);
@@ -3105,6 +3193,24 @@ void redraw_invasion(void)
 	/* Make image widget */
 	image = gtk_image_new_from_pixbuf(buf);
 
+	/* Pointer to extra info structure */
+	ei = &game_extra_info[3];
+
+	/* Create text for handsize */
+	sprintf(ei->text, "<span foreground=\"blue\" weight=\"bold\">%d</span>\n<span foreground=\"red\" weight=\"bold\">%d</span>", real_game.xeno_repulse, real_game.empire_military);
+
+	/* Set font */
+	ei->fontstr = "Sans 12";
+
+	/* Draw text a border */
+	ei->border = 0;
+
+	ei->pos = CENTER;
+
+	/* Connect expose-event to draw extra text */
+	g_signal_connect_after(G_OBJECT(image), "expose-event",
+						   G_CALLBACK(draw_extra_text), ei);
+
 	/* Destroy local copy of the pixbuf */
 	g_object_unref(G_OBJECT(buf));
 
@@ -3121,13 +3227,52 @@ void redraw_invasion(void)
 	                  / gdk_pixbuf_get_height(orig);
 	buf = gdk_pixbuf_scale_simple(orig, image_w,image_h, GDK_INTERP_BILINEAR);
 
+	/* Determine number of card for the current wave in the deck */
+	i = wave == 0 ? 1 : real_game.xeno_n_invasion_card[wave];
+
+	/* Determine maximum number of card for the current wave in the deck */
+	switch (wave)
+	{
+		case 0:
+			j = 1;
+			break;
+		case 1:
+		case 2:
+			j = (real_game.advanced ? 1 : 2)*real_game.num_players;
+			break;
+		case 3:
+			j = xeno_wave_info[3].n;
+	}
+
+	/* Build deck image */
+	buf = overlay(icon_cache[ICON_DRAW], icon_cache[ICON_DRAW_EMPTY], 48,
+	              i, j);
+
 	/* Make image widget */
 	image = gtk_image_new_from_pixbuf(buf);
 
 	/* Destroy local copy of the pixbuf */
 	g_object_unref(G_OBJECT(buf));
 
-	//TODO indication of number of card left for the current wave
+	if (wave > 0)
+	{
+		/* Pointer to extra info structure */
+		ei = &game_extra_info[4];
+
+		/* Create text for deck */
+		sprintf(ei->text,
+		        "<b>%d\n<span font=\"10\">Xeno\nDeck</span></b>", i);
+
+		/* Set font */
+		ei->fontstr = "Sans 12";
+
+		/* Draw text a border */
+		ei->border = 1;
+
+		/* Connect expose-event to draw extra text */
+		g_signal_connect_after(G_OBJECT(image), "expose-event",
+							   G_CALLBACK(draw_extra_text), ei);
+	}
 
 	/* Pack image into xeno_status_box */
 	gtk_box_pack_start(GTK_BOX(xeno_status_box), image, TRUE, FALSE, 0);
