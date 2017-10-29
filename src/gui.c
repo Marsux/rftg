@@ -267,6 +267,9 @@ static int hand_size;
 static displayed table[MAX_PLAYER][MAX_DECK];
 static int table_size[MAX_PLAYER];
 
+/* Our bunker */
+static displayed bunker;
+
 typedef struct discounts
 {
 	/* The base discount */
@@ -388,6 +391,12 @@ typedef struct status_display
 	/* Total victory points */
 	int end_vp;
 
+	/* Victory points from defeating invasions */
+	int reward_vp;
+
+	/* Victory points from contribution (also included in vp */
+	int contrib_vp;
+
 	/* Cards in hand */
 	int cards_hand;
 
@@ -499,6 +508,7 @@ static int action_cidx, action_oidx;
 #define ICON_EXPLORE    23
 #define ICON_CONSUME    24
 #define ICON_INVASION   25
+#define ICON_SHIELD     26
 
 /*
  * Icon states.
@@ -2056,6 +2066,87 @@ static GtkWidget *new_image_box(design *d_ptr, int w, int h,
 	/* Connect "pointer enter" signal */
 	g_signal_connect(G_OBJECT(box), "enter-notify-event",
 	                 G_CALLBACK(redraw_full), d_ptr);
+
+	/* Return event box widget */
+	return box;
+}
+
+/*
+ * Create an event box containing a bunker image.
+ */
+static GtkWidget *new_bunker_box(int w, int h, int highlight,
+                                 struct extra_info *ei, int accel_key)
+{
+	GdkPixbuf *buf, *border_buf, *blank_buf;
+	GtkWidget *image, *box;
+	int bw, color;
+
+	/* Scale image */
+	buf = gdk_pixbuf_scale_simple(xeno_cache[XENO_BUNKER], w, h,
+	                              GDK_INTERP_BILINEAR);
+
+	/* Check for border placed around image */
+	if (highlight != HIGH_NONE)
+	{
+		/* Compute border width */
+		bw = w / 20;
+
+		/* Enforce minimum border width */
+		if (bw < 5) bw = 5;
+
+		/* Create a border pixbuf */
+		border_buf = gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8, w, h);
+
+		/* Determine color */
+		color = highlight == HIGH_RED ? 0xff0000ff : 0xffff00ff;
+
+		/* Fill pixbuf with highlight color */
+		gdk_pixbuf_fill(border_buf, color);
+
+		/* Create a blank pixbuf */
+		blank_buf = gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8, w, h);
+
+		/* Fill pixbuf with transparent black */
+		gdk_pixbuf_fill(blank_buf, 0);
+
+		/* Copy blank space onto middle of border buffer */
+		gdk_pixbuf_copy_area(blank_buf, bw, bw, w - 2 * bw, h - 2 * bw,
+		                     border_buf, bw, bw);
+
+		/* Composite border onto card image buffer */
+		gdk_pixbuf_composite(border_buf, buf, 0, 0, w, h, 0, 0, 1, 1,
+		                     GDK_INTERP_BILINEAR, 255);
+
+		/* Release our copies of pixbufs */
+		g_object_unref(G_OBJECT(blank_buf));
+		g_object_unref(G_OBJECT(border_buf));
+	}
+
+	/* Make image widget */
+	image = gtk_image_new_from_pixbuf(buf);
+
+	/* Check for accelerator key */
+	if (accel_key >= 0 && accel_key < MAX_ACCEL)
+	{
+		/* Connect expose-event to draw extra text */
+		g_signal_connect_after(G_OBJECT(image), "expose-event",
+		                       G_CALLBACK(draw_extra_text),
+		                       &card_extra_info[accel_key]);
+	}
+
+	/* Connect expose-event to draw extra text */
+	g_signal_connect_after(G_OBJECT(image), "expose-event",
+						   G_CALLBACK(draw_extra_text),
+						   ei);
+
+	/* Destroy our copy of the pixbuf */
+	g_object_unref(G_OBJECT(buf));
+
+	/* Make event box for image */
+	box = gtk_event_box_new();
+
+	/* Add image to event box */
+	gtk_container_add(GTK_CONTAINER(box), image);
 
 	/* Return event box widget */
 	return box;
@@ -4860,11 +4951,12 @@ static void redraw_status_area(int who, GtkWidget *box)
 {
 	status_display *s_ptr;
 	GtkWidget *image, *label;
-	GdkPixbuf *buf;
+	GdkPixbuf *buf, *orig;
 	int width, height;
 	int act0, act1;
 	int i;
 	struct extra_info *ei;
+	int highlight;
 
 	/* Get information to display */
 	s_ptr = &status_player[who];
@@ -5117,6 +5209,96 @@ static void redraw_status_area(int who, GtkWidget *box)
 
 		/* Add military strength tooltip */
 		gtk_widget_set_tooltip_text(image, s_ptr->military_tip);
+
+		/* Pack icon into status box */
+		gtk_box_pack_start(GTK_BOX(box), image, FALSE, FALSE, 0);
+	}
+
+	/* If invasion mode is enabled */
+	if (invasion_enabled(&real_game))
+	{
+		/* Create shield icon image */
+		buf = gdk_pixbuf_scale_simple(icon_cache[ICON_SHIELD], height, height,
+		                              GDK_INTERP_BILINEAR);
+
+		/* Create image from pixbuf */
+		image = gtk_image_new_from_pixbuf(buf);
+
+		/* Pointer to extra info structure */
+		ei = &status_extra_info[who][6];
+
+		/* Create text for general discount */
+		sprintf(ei->text, "<b>%d</b>", s_ptr->reward_vp);
+
+		/* Set font */
+		ei->fontstr = "Sans 10";
+
+		/* No border */
+		ei->border = 1;
+
+		/* Connect expose-event to draw extra text */
+		g_signal_connect_after(G_OBJECT(image), "expose-event",
+		                       G_CALLBACK(draw_extra_text), ei);
+
+		/* Destroy our copy of the icon */
+		g_object_unref(G_OBJECT(buf));
+
+		/* Pack icon into status box */
+		gtk_box_pack_start(GTK_BOX(box), image, FALSE, FALSE, 0);
+
+		/* Prepare contribution info */
+		/* Pointer to extra info structure */
+		ei = &status_extra_info[who][7];
+
+		/* Create text for victory points */
+		sprintf(ei->text, "<b>%d</b>", s_ptr->contrib_vp);
+
+		/* Set font */
+		ei->fontstr = "Sans 10";
+
+		/* Draw text a border */
+		ei->border = 1;
+
+		/* Determine bunker image dimensions */
+		orig = xeno_cache[XENO_BUNKER];
+		width = height * gdk_pixbuf_get_width(orig)
+		               / gdk_pixbuf_get_height(orig);
+
+		/* Create a bunker image for other players, a bunker box for us */
+		if (who == player_us)
+		{
+			if (!bunker.eligible) highlight = HIGH_NONE;
+			else if (bunker.selected) highlight = HIGH_YELLOW;
+			else highlight = HIGH_RED;
+
+			/* Create bunker box */
+			// TODO accel key?
+			image = new_bunker_box(width, height, highlight, ei, -1);
+
+			/* Check for eligible card */
+			if (bunker.eligible)
+			{
+				/* Connect "button released" signal */
+				g_signal_connect(G_OBJECT(box), "button-release-event",
+				                 G_CALLBACK(bunker_selected), NULL);
+			}
+		}
+		else
+		{
+			/* Create bunker icon image */
+			buf = gdk_pixbuf_scale_simple(orig, width, height, GDK_INTERP_BILINEAR);
+
+			/* Create image from pixbuf */
+			image = gtk_image_new_from_pixbuf(buf);
+
+			/* Connect expose-event to draw extra text */
+			g_signal_connect_after(G_OBJECT(image), "expose-event",
+								   G_CALLBACK(draw_extra_text), ei);
+
+			/* Destroy our copy of the icon */
+			g_object_unref(G_OBJECT(buf));
+
+		}
 
 		/* Pack icon into status box */
 		gtk_box_pack_start(GTK_BOX(box), image, FALSE, FALSE, 0);
@@ -6118,6 +6300,11 @@ void reset_status(game *g, int who)
 	/* Copy VP chips */
 	status_player[who].vp = g->p[who].vp;
 	status_player[who].end_vp = g->p[who].end_vp;
+	if (invasion_enabled(g))
+	{
+		status_player[who].reward_vp = g->p[who].reward_vp;
+		status_player[who].contrib_vp = g->p[who].contrib_vp;
+	}
 
 	/* Count cards in hand */
 	status_player[who].cards_hand = count_player_area(g, who, WHERE_HAND);
