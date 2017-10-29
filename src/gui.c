@@ -475,6 +475,7 @@ struct extra_info
 #define RESTRICT_CONSUME            8
 #define RESTRICT_START              9
 #define RESTRICT_DEFEND_INVASION   10
+#define RESTRICT_DAMAGE            11
 #define RESTRICT_CONTRIBUTE        12
 
 /*
@@ -1831,6 +1832,34 @@ static gboolean action_check_defend_invasion(void)
 	                                list, n, special, ns, 1);
 }
 
+/*
+ * Return whether the selected world is a valid choice for damaged world.
+ */
+static int action_check_damage(void)
+{
+	displayed *i_ptr;
+	int i, n = 0;
+
+	/* Loop over cards on table */
+	for (i = 0; i < table_size[player_us]; i++)
+	{
+		/* Get table card pointer */
+		i_ptr = &table[player_us][i];
+
+		/* Skip unselected */
+		if (!i_ptr->selected) continue;
+
+		printf("%d selected\n", i_ptr->index);
+
+		/* Increment number of selected cards */
+		n++;
+	}
+
+	/* Check for exactly one world selected */
+	return n == 1;
+}
+
+/*
  * Set of "extra info" structures for player statuses.
  */
 static struct extra_info status_extra_info[MAX_PLAYER][8];
@@ -2279,6 +2308,13 @@ static void update_action_sensitivity()
 	{
 		/* Set sensitivity */
 		gtk_widget_set_sensitive(action_button, action_check_defend_invasion());
+	}
+
+	/* Check for "damage world" restriction on action button */
+	else if (action_restrict == RESTRICT_DAMAGE)
+	{
+		/* Set sensitivity */
+		gtk_widget_set_sensitive(action_button, action_check_damage());
 	}
 
 	/* Check for "contribute" restriction on action button */
@@ -10483,6 +10519,82 @@ void gui_choose_defend_invasion(game *g, int who, int deficit,
 	reset_display(&bunker);
 }
 
+/*
+ * Choose world to damage.
+ */
+static void gui_choose_damage(game *g, int who, int *list, int *num)
+{
+	displayed *i_ptr;
+	char buf[1024];
+	int i, j;
+
+	/* Create prompt */
+	sprintf(buf, "Choose world damaged by Xeno");
+
+	/* Set prompt */
+	gtk_label_set_text(GTK_LABEL(action_prompt), buf);
+
+	/* Reset displayed cards */
+	reset_cards(g, FALSE, FALSE);
+
+	/* Set button restriction */
+	action_restrict = RESTRICT_DAMAGE;
+
+	/* Deactivate action button */
+	gtk_widget_set_sensitive(action_button, FALSE);
+
+	/* Loop over damageable worlds */
+	for (i = 0; i < *num; i++)
+	{
+		/* Loop over cards on table */
+		for (j = 0; j < table_size[player_us]; j++)
+		{
+			/* Get table card pointer */
+			i_ptr = &table[player_us][j];
+
+			/* Check for matching index */
+			if (i_ptr->index == list[i])
+			{
+				/* Card is eligible */
+				i_ptr->eligible = 1;
+
+				/* Selection mode is greedy */
+				i_ptr->greedy = 1;
+
+				/* Card should be highlighted when selected */
+				i_ptr->highlight = HIGH_RED;
+			}
+		}
+	}
+
+	/* Redraw everything */
+	redraw_everything();
+
+	/* Process events */
+	gtk_main();
+
+	/* Loop over cards on table */
+	for (i = 0; i < table_size[player_us]; i++)
+	{
+		/* Get table card pointer */
+		i_ptr = &table[player_us][i];
+
+		/* Check for selected */
+		if (i_ptr->selected)
+		{
+			/* Add to list */
+			list[0] = i_ptr->index;
+
+			/* Selected world found, stop looking */
+			break;
+		}
+	}
+
+	/* Set number of worlds selected */
+	*num = 1;
+}
+
+/*
  * Choose good(s) to contribute.
  */
 void gui_choose_contribute(game *g, int who, int goods[], int *num)
@@ -10953,6 +11065,13 @@ static void gui_make_choice(game *g, int who, int type, int list[], int *nl,
 
 			/* Choose defense method */
 			gui_choose_defend_invasion(g, who, arg1, list, nl, special, ns);
+			rv = 0;
+			break;
+
+		/* Choose a world to damage */
+		case CHOICE_DAMAGE:
+			/* Choose world to damage */
+			gui_choose_damage(g, who, list, nl);
 			rv = 0;
 			break;
 
