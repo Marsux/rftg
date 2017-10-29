@@ -13228,10 +13228,6 @@ static void damage_world(game *g, int who)
 		list[n++] = x;
 	}
 
-	printf("%d", n);
-	for (x = 0; x < n; x++) printf(" %d", list[x]);
-	printf("\n");
-
 	/* Check for world to damage */
 	if (!n) return;
 

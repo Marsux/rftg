@@ -1849,8 +1849,6 @@ static int action_check_damage(void)
 		/* Skip unselected */
 		if (!i_ptr->selected) continue;
 
-		printf("%d selected\n", i_ptr->index);
-
 		/* Increment number of selected cards */
 		n++;
 	}
@@ -1971,14 +1969,10 @@ static gboolean draw_repulse_token(GtkWidget *image, GdkEventExpose *event,
 	/* Get player index */
 	p_ptr = &real_game.p[GPOINTER_TO_INT(data)];
 
-	printf("Displaying token for %s\n", p_ptr->name);
-
 	/* Get window to draw on */
 	w = gtk_widget_get_window(image);
 
 	gdk_drawable_get_size(w, &x, &y);
-
-	printf("%d %d\n", x, y);
 
 	/* Set draw color */
 	gdk_rgb_gc_set_foreground(draw_gc, player_colors_int[p_ptr->color]);
