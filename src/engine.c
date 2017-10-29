@@ -388,7 +388,7 @@ int count_hand_cards(game *g, int who)
 {
 	player *p_ptr = &g->p[who];
 	return count_player_area(g, who, WHERE_HAND) +
-		     p_ptr->fake_hand - p_ptr->fake_discards
+		     p_ptr->fake_hand - p_ptr->fake_discards;
 }
 
 /*
